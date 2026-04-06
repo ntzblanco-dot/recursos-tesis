@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador 3D - Potenciómetro y Resistencia</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: 'Courier New', Courier, monospace; }
+        
+        /* Panel de Datos (Overlay) */
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            padding: 20px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            pointer-events: none;
+            box-shadow: 0 0 15px rgba(0,255,0,0.2);
+        }
+
+        .data-label { font-size: 12px; color: #888; margin-bottom: 5px; }
+        .data-value { font-size: 24px; font-weight: bold; margin-bottom: 15px; }
+        
+        #instrucciones {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: #555;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <div class="data-label">RESISTENCIA ACTUAL</div>
+        <div id="res-val" class="data-value">0 Ω</div>
+        
+        <div class="data-label">SALIDA DE VOLTAJE (Vout)</div>
+        <div id="volt-val" class="data-value">0.00 V</div>
+
+        <div class="data-label">COLOR LED (RGB)</div>
+        <div id="rgb-val" class="data-value" style="font-size: 14px;">(0, 0, 0)</div>
+    </div>
+
+    <div id="instrucciones">Usa el MOUSE para rotar la cámara | SHIFT + MOUSE para mover | RUEDA para Zoom</div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- CONFIGURACIÓN ESCENA ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a1a);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 5, 5);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+
+        // --- LUCES ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        
+        const pointLight = new THREE.PointLight(0xffffff, 50);
+        pointLight.position.set(5, 5, 5);
+        pointLight.castShadow = true;
+        scene.add(pointLight);
+
+        // --- COMPONENTES ---
+
+        // Protoboard (Base)
+        const boardGeo = new THREE.BoxGeometry(6, 0.5, 4);
+        const boardMat = new THREE.MeshPhongMaterial({ color: 0xddddcc });
+        const board = new THREE.Mesh(boardGeo, boardMat);
+        board.receiveShadow = true;
+        scene.add(board);
+
+        // Cuerpo Potenciómetro (Cilindro abajo)
+        const potBodyGeo = new THREE.CylinderGeometry(1, 1, 0.8, 32);
+        const potBodyMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
+        const potBody = new THREE.Mesh(potBodyGeo, potBodyMat);
+        potBody.position.set(-1.5, 0.6, 0);
+        scene.add(potBody);
+
+        // Perilla móvil (Knob)
+        const knobGroup = new THREE.Group();
+        knobGroup.position.set(-1.5, 1.2, 0);
+        
+        const knobGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.6, 32);
+        const knobMat = new THREE.MeshPhongMaterial({ color: 0x666666 });
+        const knob = new THREE.Mesh(knobGeo, knobMat);
+        
+        const indicatorGeo = new THREE.BoxGeometry(0.1, 0.1, 0.5);
+        const indicatorMat = new THREE.MeshPhongMaterial({ color: 0xffffff });
+        const indicator = new THREE.Mesh(indicatorGeo, indicatorMat);
+        indicator.position.set(0, 0.3, -0.4);
+        
+        knobGroup.add(knob);
+        knobGroup.add(indicator);
+        scene.add(knobGroup);
+
+        // LED RGB 3D
+        const ledGeo = new THREE.SphereGeometry(0.4, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+        const ledMat = new THREE.MeshPhongMaterial({ 
+            color: 0x333333, 
+            transparent: true, 
+            opacity: 0.9,
+            emissive: 0x000000 
+        });
+        const led = new THREE.Mesh(ledGeo, ledMat);
+        led.position.set(1.5, 0.25, 0);
+        led.scale.set(1, 1.5, 1);
+        scene.add(led);
+
+        // Luz del LED
+        const ledLight = new THREE.PointLight(0xffffff, 0, 3);
+        ledLight.position.set(1.5, 1, 0);
+        scene.add(ledLight);
+
+        // --- LÓGICA DE INTERACCIÓN ---
+        let targetRotation = 0;
+        const maxResistance = 10000; // 10k Ohmios
+        const maxVoltage = 5;       // 5 Voltios
+
+        window.addEventListener('keydown', (e) => {
+            // Girar con flechas para simplificar en 3D
+            if(e.key === "ArrowRight" && targetRotation < 4.7) targetRotation += 0.1;
+            if(e.key === "ArrowLeft" && targetRotation > 0) targetRotation -= 0.1;
+            actualizarCircuito();
+        });
+
+        function actualizarCircuito() {
+            // Aplicar rotación
+            knobGroup.rotation.y = targetRotation;
+
+            // Calcular valores (Basado en el ángulo de 0 a 270 grados aprox)
+            const porcentaje = targetRotation / 4.7;
+            const resistencia = Math.round(porcentaje * maxResistance);
+            const voltaje = (porcentaje * maxVoltage).toFixed(2);
+
+            // Colores RGB
+            let r=0, g=0, b=0;
+            if (porcentaje < 0.33) {
+                r = 255; g = Math.round(porcentaje * 3 * 255); b = 0;
+            } else if (porcentaje < 0.66) {
+                r = Math.round(255 - (porcentaje-0.33) * 3 * 255); g = 255; b = Math.round((porcentaje-0.33) * 3 * 255);
+            } else {
+                r = Math.round((porcentaje-0.66) * 3 * 255); g = Math.round(255 - (porcentaje-0.66) * 3 * 255); b = 255;
+            }
+
+            // Actualizar Interfaz
+            document.getElementById('res-val').innerText = `${resistencia} Ω`;
+            document.getElementById('volt-val').innerText = `${voltaje} V`;
+            document.getElementById('rgb-val').innerText = `(${r}, ${g}, ${b})`;
+
+            // Actualizar LED 3D
+            const colorHex = (r << 16) + (g << 8) + b;
+            ledMat.color.setHex(colorHex);
+            ledMat.emissive.setHex(colorHex);
+            ledLight.color.setHex(colorHex);
+            ledLight.intensity = porcentaje * 2;
+        }
+
+        // Bucle de animación
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Ajustar ventana
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
