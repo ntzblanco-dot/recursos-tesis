@@ -1,0 +1,300 @@
+
+<style>
+  .ohm-wrap { font-family: var(--font-sans); padding: 1rem 0; }
+  .circuit-bg { background: #0d1117; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .ctrl-card { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: 8px; padding: 14px; }
+  .ctrl-label { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 6px; }
+  .ctrl-value { font-size: 20px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 10px; }
+  .ctrl-value span { font-size: 13px; font-weight: 400; color: var(--color-text-secondary); }
+  .formula-box { background: #0d1117; border-radius: 8px; padding: 12px; text-align: center; margin-top: 12px; }
+  .formula-text { font-size: 15px; font-weight: 500; color: #39d98a; font-family: var(--font-mono); }
+  .speed-bar-track { height: 8px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+  .speed-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease, background 0.4s ease; }
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-top: 12px; }
+  .legend-item { font-size: 12px; color: var(--color-text-secondary); background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: 6px; padding: 10px 12px; }
+  .legend-item strong { display: block; font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+</style>
+
+<div class="ohm-wrap">
+  <h2 class="sr-only">Simulador interactivo de la Ley de Ohm con circuito en serie animado</h2>
+
+  <div class="circuit-bg">
+    <canvas id="cvs" width="660" height="280" style="width:100%;display:block;border-radius:8px;"></canvas>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl-card">
+      <div class="ctrl-label">Voltaje (V)</div>
+      <div class="ctrl-value" id="v-val">12 <span>V</span></div>
+      <input type="range" id="sl-v" min="1" max="24" value="12" step="0.5" oninput="update()" style="width:100%">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-text-secondary);margin-top:4px"><span>1 V</span><span>24 V</span></div>
+    </div>
+    <div class="ctrl-card">
+      <div class="ctrl-label">Resistencia (Ω)</div>
+      <div class="ctrl-value" id="r-val">6 <span>Ω</span></div>
+      <input type="range" id="sl-r" min="1" max="20" value="6" step="0.5" oninput="update()" style="width:100%">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-text-secondary);margin-top:4px"><span>1 Ω</span><span>20 Ω</span></div>
+    </div>
+    <div class="ctrl-card">
+      <div class="ctrl-label">Corriente calculada (I = V ÷ R)</div>
+      <div class="ctrl-value" id="i-val">2.00 <span>A</span></div>
+      <div class="ctrl-label" style="margin-top:6px">Velocidad electrones</div>
+      <div class="speed-bar-track"><div class="speed-bar-fill" id="sp-bar" style="width:50%;background:#39d98a"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-text-secondary);margin-top:4px"><span>lenta</span><span>rápida</span></div>
+    </div>
+  </div>
+
+  <div class="formula-box">
+    <div class="formula-text" id="formula">I = 12 ÷ 6 = 2.00 A</div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><strong style="color:#e05252">Voltaje = presión</strong>Cuanto mayor, más empuja a los electrones</div>
+    <div class="legend-item"><strong style="color:#39d98a">Corriente = flujo</strong>Electrones que pasan por segundo</div>
+    <div class="legend-item"><strong style="color:#f0a030">Resistencia = obstáculo</strong>Dificulta el paso de los electrones</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('cvs');
+  const ctx = canvas.getContext('2d');
+
+  // --- Geometría del circuito ---
+  // Rectángulo exterior del cable: x1=80, y1=50, x2=580, y2=230
+  // Batería centrada verticalmente en el lado izquierdo
+  // Resistencia en el cable superior centrada
+
+  const W = 660, H = 280;
+  const cx1 = 80, cy1 = 50, cx2 = 580, cy2 = 230;  // esquinas del circuito
+
+  // Puntos clave del trayecto (sentido horario, flujo convencional + -> -)
+  // Los electrones viajan al contrario, pero la animación los mostramos en sentido convencional
+  // Segmentos: top-left->top-right, right-top->right-bottom, bottom-right->bottom-left, left-bottom->left-top
+  // Batería ocupa lado izquierdo entre cy1 y cy2, aprox centro y=140
+  // Resistencia ocupa cable superior, entre x=220 y x=420
+
+  const PATH = [
+    {x: cx1, y: cy1},          // 0: esquina sup izq
+    {x: 220, y: cy1},           // 1: entrada resistencia
+    {x: 420, y: cy1},           // 2: salida resistencia
+    {x: cx2, y: cy1},           // 3: esquina sup der
+    {x: cx2, y: cy2},           // 4: esquina inf der
+    {x: cx1, y: cy2},           // 5: esquina inf izq
+    {x: cx1, y: cy1},           // 6: cierra el loop
+  ];
+
+  // Longitud de cada segmento
+  const SEGS = [];
+  for(let i=0;i<PATH.length-1;i++){
+    const dx=PATH[i+1].x-PATH[i].x, dy=PATH[i+1].y-PATH[i].y;
+    SEGS.push(Math.sqrt(dx*dx+dy*dy));
+  }
+  const TOTAL = SEGS.reduce((a,b)=>a+b,0);
+
+  function posAt(t){
+    t = ((t%1)+1)%1;
+    let d = t*TOTAL, acc=0;
+    for(let i=0;i<SEGS.length;i++){
+      if(d<=acc+SEGS[i]){
+        const r=(d-acc)/SEGS[i];
+        return { x: PATH[i].x+(PATH[i+1].x-PATH[i].x)*r,
+                 y: PATH[i].y+(PATH[i+1].y-PATH[i].y)*r };
+      }
+      acc+=SEGS[i];
+    }
+    return {x:PATH[0].x, y:PATH[0].y};
+  }
+
+  // --- Electrones ---
+  const N = 18;
+  const electrons = Array.from({length:N},(_,i)=>({ t: i/N }));
+  let speed = 0.002; // progreso por frame
+
+  // --- Dibujo ---
+  function drawCircuit(V,R){
+    ctx.clearRect(0,0,W,H);
+
+    // Fondo oscuro ya lo da el CSS, solo canvas transparente aquí
+    // Cable: dibujamos el rectángulo del circuito como 4 segmentos
+    // pero omitimos donde están los componentes
+
+    const cabColor = '#4a9eff';
+    ctx.strokeStyle = cabColor;
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = '#4a9eff';
+    ctx.shadowBlur = 8;
+
+    // Segmento superior izquierdo (de esquina sup izq a entrada resistencia)
+    line(cx1, cy1, 220, cy1);
+    // Segmento superior derecho (de salida resistencia a esquina sup der)
+    line(420, cy1, cx2, cy1);
+    // Segmento derecho vertical
+    line(cx2, cy1, cx2, cy2);
+    // Segmento inferior
+    line(cx2, cy2, cx1, cy2);
+    // Segmento izquierdo: de esquina inf izq a bajo de batería, y de arriba de batería a esquina sup izq
+    // Batería: centro y=140, alto=100 => de y=90 a y=190
+    line(cx1, cy2, cx1, 190);
+    line(cx1, 90, cx1, cy1);
+
+    ctx.shadowBlur = 0;
+
+    // --- BATERÍA ---
+    drawBattery(V);
+
+    // --- RESISTENCIA ---
+    drawResistor(R);
+
+    // --- Flechas de dirección ---
+    drawArrows();
+
+    // --- Electrones ---
+    electrons.forEach(e=>{
+      const p = posAt(e.t);
+      // Color según velocidad
+      const hue = Math.max(160, 200 - speed*3000);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 6, 0, Math.PI*2);
+      ctx.fillStyle = `hsl(${hue},100%,60%)`;
+      ctx.shadowColor = `hsl(${hue},100%,60%)`;
+      ctx.shadowBlur = 12;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    // Etiqueta informativa
+    const I = V/R;
+    const msg = I < 0.8 ? '🐢 Corriente baja — electrones lentos'
+              : I < 2   ? '✅ Corriente normal'
+              : I < 4   ? '⚡ Corriente alta — electrones rápidos'
+              :            '🚀 ¡Máxima corriente!';
+    ctx.fillStyle = '#39d98a';
+    ctx.font = '13px var(--font-sans, sans-serif)';
+    ctx.textAlign = 'center';
+    ctx.fillText(msg, W/2, H-10);
+  }
+
+  function line(x1,y1,x2,y2){
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  }
+
+  function drawBattery(V){
+    const bx = cx1-18, by = 90, bw = 36, bh = 100;
+    // Cuerpo
+    const grad = ctx.createLinearGradient(bx,by,bx+bw,by);
+    grad.addColorStop(0,'#c0392b'); grad.addColorStop(1,'#e74c3c');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(bx,by,bw,bh,6);
+    ctx.fill();
+    ctx.strokeStyle = '#922b21'; ctx.lineWidth=1.5; ctx.shadowBlur=0;
+    ctx.stroke();
+
+    // Terminal + (arriba)
+    ctx.fillStyle='#ff8080';
+    ctx.fillRect(bx+10,by-8,16,8);
+    ctx.fillStyle='white'; ctx.font='bold 13px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('+', cx1, by-2);
+
+    // Terminal − (abajo)
+    ctx.fillStyle='#95a5a6';
+    ctx.fillRect(bx+12,by+bh,12,7);
+    ctx.fillStyle='white'; ctx.font='bold 15px sans-serif';
+    ctx.fillText('−', cx1, by+bh+13);
+
+    // Valor voltaje
+    ctx.fillStyle='white'; ctx.font='bold 14px sans-serif';
+    ctx.fillText(V+'V', cx1, by+bh/2+6);
+
+    // Etiqueta
+    ctx.fillStyle='#e74c3c'; ctx.font='11px sans-serif';
+    ctx.fillText('FUENTE', cx1, cy2+18);
+  }
+
+  function drawResistor(R){
+    // Zigzag centrado en x=320, y=cy1
+    const rx=220, ry=cy1;
+    ctx.strokeStyle='#f0a030'; ctx.lineWidth=5;
+    ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.shadowColor='#f0a030'; ctx.shadowBlur=8;
+    ctx.beginPath();
+    const pts=[[0,0],[10,0],[17,-16],[27,16],[37,-16],[47,16],[57,-16],[67,16],[73,0],[100,0]];
+    ctx.moveTo(rx+pts[0][0],ry+pts[0][1]);
+    for(let i=1;i<pts.length;i++) ctx.lineTo(rx+pts[i][0],ry+pts[i][1]);
+    ctx.stroke();
+    ctx.shadowBlur=0;
+
+    // Etiqueta
+    ctx.fillStyle='#f0a030'; ctx.font='bold 13px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(R+' Ω', 320, cy1+30);
+    ctx.fillStyle='#d0901a'; ctx.font='11px sans-serif';
+    ctx.fillText('RESISTENCIA', 320, cy1-18);
+  }
+
+  function drawArrows(){
+    ctx.fillStyle='#39d98a'; ctx.strokeStyle='#39d98a'; ctx.lineWidth=1.5;
+    // Flecha superior izquierda (→)
+    arrow(160, cy1, 1, 0);
+    // Flecha superior derecha (→)
+    arrow(470, cy1, 1, 0);
+    // Flecha lateral derecha (↓)
+    arrow(cx2, 150, 0, 1);
+    // Flecha inferior (←)
+    arrow(340, cy2, -1, 0);
+    // Flecha lateral izquierda (↑)
+    arrow(cx1, 150, 0, -1);
+  }
+
+  function arrow(x,y,dx,dy){
+    const s=10;
+    ctx.beginPath();
+    ctx.moveTo(x,y);
+    ctx.lineTo(x - s*dx + s*0.5*dy, y - s*dy + s*0.5*dx);
+    ctx.lineTo(x - s*dx - s*0.5*dy, y - s*dy - s*0.5*dx);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // --- Animación ---
+  let lastT = 0;
+  function frame(ts){
+    const dt = Math.min((ts-lastT)/1000, 0.05);
+    lastT = ts;
+    electrons.forEach(e=>{
+      e.t += speed * dt * 60;
+      if(e.t>1) e.t-=1;
+    });
+    const V = parseFloat(document.getElementById('sl-v').value);
+    const R = parseFloat(document.getElementById('sl-r').value);
+    drawCircuit(V,R);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(t=>{ lastT=t; requestAnimationFrame(frame); });
+
+  // --- Controles ---
+  window.update = function(){
+    const V = parseFloat(document.getElementById('sl-v').value);
+    const R = parseFloat(document.getElementById('sl-r').value);
+    const I = V/R;
+
+    document.getElementById('v-val').innerHTML = V.toFixed(1)+' <span>V</span>';
+    document.getElementById('r-val').innerHTML = R.toFixed(1)+' <span>Ω</span>';
+    document.getElementById('i-val').innerHTML = I.toFixed(2)+' <span>A</span>';
+    document.getElementById('formula').textContent = `I = ${V} ÷ ${R} = ${I.toFixed(2)} A`;
+
+    // Velocidad proporcional a corriente (I max ~24A, min ~0.05A)
+    speed = Math.max(0.0004, Math.min(0.006, I * 0.0012));
+
+    const pct = Math.min(100, (I/4)*100);
+    const bar = document.getElementById('sp-bar');
+    bar.style.width = pct+'%';
+    bar.style.background = pct<30 ? '#4a9eff' : pct<65 ? '#39d98a' : pct<85 ? '#f0a030' : '#e05252';
+  };
+
+  update();
+})();
+</script>
