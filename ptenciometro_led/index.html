@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Potenciómetro y LED – Simulación interactiva</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f4f6fa;
+    color: #222;
+    padding: 20px;
+    max-width: 780px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 20px;
+  }
+
+  /* ---------- slider section ---------- */
+  .slider-wrap {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e0e3ea;
+    padding: 16px 20px 12px;
+    margin-bottom: 16px;
+  }
+
+  .slider-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .slider-label-row span:first-child {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+  }
+
+  #rval-badge {
+    font-size: 13px;
+    font-weight: 600;
+    background: #fff3e0;
+    color: #b45309;
+    border-radius: 20px;
+    padding: 3px 12px;
+    border: 1px solid #fcd34d;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right, #f97316, #d1d5db);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #f97316;
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 2px #f97316;
+    cursor: pointer;
+  }
+
+  /* ---------- cards ---------- */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e0e3ea;
+    padding: 12px 14px;
+    text-align: center;
+  }
+
+  .card .c-label {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 4px;
+  }
+
+  .card .c-val {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+
+  .card .c-unit {
+    font-size: 11px;
+    color: #aaa;
+  }
+
+  /* ---------- circuit SVG ---------- */
+  .circuit-box {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e0e3ea;
+    padding: 10px 6px 6px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+
+  /* ---------- explanation panel ---------- */
+  .explanation {
+    background: #fff;
+    border-radius: 12px;
+    border-left: 4px solid #f97316;
+    border-top: 1px solid #e0e3ea;
+    border-right: 1px solid #e0e3ea;
+    border-bottom: 1px solid #e0e3ea;
+    padding: 14px 18px;
+    font-size: 14px;
+    line-height: 1.65;
+    color: #333;
+    margin-bottom: 16px;
+    min-height: 56px;
+    transition: border-color .3s;
+  }
+
+  /* ---------- concept box ---------- */
+  .concept {
+    background: #f0f4ff;
+    border-radius: 12px;
+    border: 1px solid #c7d2fe;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+  }
+
+  .concept h2 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #3730a3;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+
+  .concept ul {
+    padding-left: 18px;
+    font-size: 13px;
+    color: #444;
+    line-height: 1.7;
+  }
+
+  /* ---------- voltage bar ---------- */
+  .vbar-wrap {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e0e3ea;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+  }
+
+  .vbar-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 10px;
+  }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .bar-label {
+    font-size: 12px;
+    color: #666;
+    width: 120px;
+    flex-shrink: 0;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 14px;
+    background: #f1f5f9;
+    border-radius: 7px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 7px;
+    transition: width .3s ease;
+  }
+
+  .bar-num {
+    font-size: 12px;
+    font-weight: 600;
+    width: 38px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .footer-note {
+    font-size: 11px;
+    color: #aaa;
+    text-align: center;
+    margin-top: 6px;
+  }
+
+  /* ---------- led selector ---------- */
+  .led-selector {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e0e3ea;
+    padding: 14px 20px;
+    margin-bottom: 16px;
+  }
+  .led-selector-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 10px;
+  }
+  .led-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .led-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 2px solid #e0e3ea;
+    background: #f8fafc;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #444;
+    transition: border-color .15s, background .15s, transform .1s;
+    user-select: none;
+  }
+  .led-btn:hover { background: #f1f5f9; transform: translateY(-1px); }
+  .led-btn.active {
+    border-color: currentColor;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(0,0,0,.06);
+  }
+  .led-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 2px solid rgba(0,0,0,.18);
+  }
+  .vf-info {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .vf-badge {
+    font-weight: 700;
+    font-size: 13px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    background: #f1f5f9;
+    border: 1px solid #e0e3ea;
+    color: #334155;
+  }
+
+</style>
+</head>
+<body>
+
+<h1>⚡ Potenciómetro y LED – Simulación interactiva</h1>
+<p class="subtitle">Mueve el slider y observa cómo la resistencia afecta la corriente y el brillo del LED.</p>
+
+<!-- slider -->
+<div class="slider-wrap">
+  <div class="slider-label-row">
+    <span>Resistencia del potenciómetro</span>
+    <span id="rval-badge">300 Ω</span>
+  </div>
+  <input type="range" id="slider" min="0" max="2000" step="10" value="300">
+</div>
+
+<!-- selector de tipo de LED -->
+<div class="led-selector">
+  <div class="led-selector-title">Tipo de LED (voltaje de umbral Vf real)</div>
+  <div class="led-btns">
+    <button class="led-btn active" data-vf="1.2" data-color="#8b0000" data-name="Infrarrojo" onclick="selectLed(this)" style="color:#7f1d1d">
+      <span class="led-dot" style="background:#4a0000;border-color:#7f1d1d"></span> Infrarrojo (IR)
+    </button>
+    <button class="led-btn" data-vf="1.8" data-color="#dc2626" data-name="Rojo" onclick="selectLed(this)" style="color:#b91c1c">
+      <span class="led-dot" style="background:#ef4444;border-color:#b91c1c"></span> Rojo
+    </button>
+    <button class="led-btn" data-vf="2.0" data-color="#ea580c" data-name="Naranja" onclick="selectLed(this)" style="color:#c2410c">
+      <span class="led-dot" style="background:#f97316;border-color:#c2410c"></span> Naranja
+    </button>
+    <button class="led-btn" data-vf="2.1" data-color="#ca8a04" data-name="Amarillo" onclick="selectLed(this)" style="color:#a16207">
+      <span class="led-dot" style="background:#facc15;border-color:#a16207"></span> Amarillo
+    </button>
+    <button class="led-btn" data-vf="2.2" data-color="#16a34a" data-name="Verde" onclick="selectLed(this)" style="color:#15803d">
+      <span class="led-dot" style="background:#4ade80;border-color:#15803d"></span> Verde
+    </button>
+    <button class="led-btn" data-vf="3.2" data-color="#1d4ed8" data-name="Azul" onclick="selectLed(this)" style="color:#1e40af">
+      <span class="led-dot" style="background:#3b82f6;border-color:#1e40af"></span> Azul
+    </button>
+    <button class="led-btn" data-vf="3.2" data-color="#e2e8f0" data-name="Blanco" onclick="selectLed(this)" style="color:#475569">
+      <span class="led-dot" style="background:#f1f5f9;border-color:#94a3b8"></span> Blanco
+    </button>
+    <button class="led-btn" data-vf="3.5" data-color="#7c3aed" data-name="UV" onclick="selectLed(this)" style="color:#6d28d9">
+      <span class="led-dot" style="background:#a78bfa;border-color:#6d28d9"></span> UV
+    </button>
+  </div>
+  <div class="vf-info">
+    <span>⚡ Vf del LED seleccionado:</span>
+    <span class="vf-badge" id="vf-display">1.2 V</span>
+    <span id="vf-note" style="color:#888">— Con Vf más alto, queda menos voltaje disponible para empujar la corriente.</span>
+  </div>
+</div>
+
+<!-- cards -->
+<div class="cards">
+  <div class="card">
+    <div class="c-label">Resistencia total</div>
+    <div class="c-val" id="c-rtot">400</div>
+    <div class="c-unit">Ω</div>
+  </div>
+  <div class="card">
+    <div class="c-label">Corriente</div>
+    <div class="c-val" id="c-i">17.5</div>
+    <div class="c-unit">mA</div>
+  </div>
+  <div class="card">
+    <div class="c-label">Voltaje en LED</div>
+    <div class="c-val" id="c-vled">2.0</div>
+    <div class="c-unit">V</div>
+  </div>
+</div>
+
+<!-- circuit -->
+<div class="circuit-box">
+<svg id="circuit-svg" width="100%" viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5"
+            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#94a3b8" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+
+    <!-- LED glow filter -->
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-strong" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- ===== WIRES ===== -->
+  <!-- + battery → pot top -->
+  <polyline points="90,105 155,105 155,82" fill="none" stroke="#cbd5e1" stroke-width="2"/>
+  <!-- pot → fixed resistor -->
+  <polyline points="235,62 330,62 330,95" fill="none" stroke="#cbd5e1" stroke-width="2"/>
+  <!-- fixed res → LED -->
+  <polyline points="330,131 330,158 410,158" fill="none" stroke="#cbd5e1" stroke-width="2"/>
+  <!-- LED → ground return -->
+  <polyline points="460,158 590,158 590,218 55,218 55,170" fill="none" stroke="#cbd5e1" stroke-width="2"/>
+
+  <!-- ===== BATTERY ===== -->
+  <rect x="30" y="95" width="60" height="82" rx="7"
+        fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="60" y="122" text-anchor="middle" font-size="14" font-weight="700" fill="#1e293b">9V</text>
+  <text x="60" y="138" text-anchor="middle" font-size="10" fill="#64748b">batería</text>
+  <text x="60" y="112" text-anchor="middle" font-size="15" font-weight="700" fill="#22c55e">+</text>
+  <text x="60" y="168" text-anchor="middle" font-size="18" fill="#ef4444">−</text>
+
+  <!-- ===== POTENTIOMETER ===== -->
+  <rect x="115" y="42" width="120" height="40" rx="7"
+        fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="175" y="60" text-anchor="middle" font-size="12" font-weight="700" fill="#92400e">Potenciómetro</text>
+  <text id="pot-label" x="175" y="75" text-anchor="middle" font-size="11" fill="#b45309">300 Ω</text>
+
+  <!-- wiper -->
+  <line id="wiper" x1="175" y1="82" x2="175" y2="100"
+        stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="3 2"/>
+  <circle id="wiper-dot" cx="175" cy="82" r="5" fill="#f59e0b"/>
+
+  <!-- ===== FIXED RESISTOR ===== -->
+  <rect x="300" y="95" width="60" height="36" rx="5"
+        fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+  <text x="330" y="112" text-anchor="middle" font-size="11" font-weight="600" fill="#166534">100 Ω</text>
+  <text x="330" y="124" text-anchor="middle" font-size="10" fill="#4ade80">fija</text>
+
+  <!-- ===== LED ===== -->
+  <!-- glow halo (background) -->
+  <circle id="led-halo" cx="435" cy="158" r="28"
+          fill="red" opacity="0" filter="url(#glow-strong)"/>
+
+  <!-- LED triangle body -->
+  <polygon id="led-body"
+           points="410,141 455,158 410,175"
+           fill="#555" stroke="#888" stroke-width="1.5"/>
+  <!-- LED bar -->
+  <line x1="455" y1="141" x2="455" y2="175"
+        stroke="#888" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- LED rays -->
+  <g id="led-rays" opacity="0">
+    <line x1="464" y1="143" x2="484" y2="130" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    <line x1="467" y1="158" x2="492" y2="158" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    <line x1="464" y1="173" x2="484" y2="186" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    <line x1="461" y1="135" x2="476" y2="120" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="461" y1="181" x2="476" y2="196" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+
+  <text x="435" y="200" text-anchor="middle" font-size="11" fill="#64748b">LED</text>
+
+  <!-- ===== CURRENT ARROW ===== -->
+  <line x1="352" y1="150" x2="402" y2="150"
+        stroke="#3b82f6" stroke-width="2"
+        marker-end="url(#arr)"/>
+  <text id="i-label" x="375" y="144" text-anchor="middle"
+        font-size="11" font-weight="600" fill="#3b82f6">I = 0 mA</text>
+
+  <!-- ===== VOLTAGE LABELS ===== -->
+  <text id="v-pot-lbl" x="175" y="36" text-anchor="middle"
+        font-size="11" font-weight="600" fill="#f59e0b">↓ 0.0 V</text>
+  <text id="v-res-lbl" x="268" y="113" text-anchor="end"
+        font-size="10" fill="#16a34a">↓ 0.0 V</text>
+  <text id="v-led-lbl" x="435" y="130" text-anchor="middle"
+        font-size="10" fill="#e11d48">↓ 0.0 V</text>
+
+  <!-- ===== LEGEND ===== -->
+  <rect x="520" y="42" width="160" height="80" rx="7"
+        fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="600" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#475569">Ley de Ohm</text>
+  <text x="600" y="76" text-anchor="middle" font-size="13" font-weight="700" fill="#1e293b">I = V ÷ R</text>
+  <text x="600" y="92" text-anchor="middle" font-size="10" fill="#64748b">I = corriente (A)</text>
+  <text x="600" y="106" text-anchor="middle" font-size="10" fill="#64748b">V = voltaje (V)</text>
+  <text x="600" y="118" text-anchor="middle" font-size="10" fill="#64748b">R = resistencia (Ω)</text>
+</svg>
+</div>
+
+<!-- voltage bar chart -->
+<div class="vbar-wrap">
+  <div class="vbar-title">Distribución del voltaje (de los 9 V de la batería)</div>
+  <div class="bar-row">
+    <span class="bar-label">Potenciómetro</span>
+    <div class="bar-track"><div class="bar-fill" id="bar-pot" style="width:0%;background:#f59e0b;"></div></div>
+    <span class="bar-num" id="bv-pot" style="color:#b45309;">0.0 V</span>
+  </div>
+  <div class="bar-row">
+    <span class="bar-label">Resistencia fija</span>
+    <div class="bar-track"><div class="bar-fill" id="bar-res" style="width:0%;background:#22c55e;"></div></div>
+    <span class="bar-num" id="bv-res" style="color:#166534;">0.0 V</span>
+  </div>
+  <div class="bar-row">
+    <span class="bar-label">LED</span>
+    <div class="bar-track"><div class="bar-fill" id="bar-led" style="width:0%;background:#ef4444;"></div></div>
+    <span class="bar-num" id="bv-led" style="color:#b91c1c;">0.0 V</span>
+  </div>
+</div>
+
+<!-- explanation -->
+<div class="explanation" id="explanation">
+  Mueve el slider para comenzar. Observa cómo cambia la corriente y el brillo del LED.
+</div>
+
+<!-- concept box -->
+<div class="concept">
+  <h2>💡 ¿Qué está pasando?</h2>
+  <ul>
+    <li><strong>El potenciómetro es una resistencia variable.</strong> Al girarlo (o moverlo) cambia cuánta oposición tiene el flujo de electrones.</li>
+    <li><strong>Más resistencia → menos corriente</strong> (Ley de Ohm: I = V ÷ R). El LED recibe menos corriente → brilla menos.</li>
+    <li><strong>El voltaje se reparte</strong> entre todos los componentes en serie. Cuanta más resistencia tenga el potenciómetro, más voltaje "consume" él y menos llega al LED.</li>
+    <li><strong>La resistencia fija (100 Ω)</strong> protege al LED: evita que con el potenciómetro en 0 Ω la corriente sea tan alta que lo queme.</li>
+  </ul>
+</div>
+
+<p class="footer-note">Simulación educativa · Valores aproximados · Batería 9V · R fija = 100 Ω · Vf según tipo de LED seleccionado</p>
+
+<script>
+  const VCC     = 9;
+  const R_FIXED = 100;
+  let V_FORWARD = 1.2;   // se actualiza al elegir tipo de LED
+  let LED_NAME  = 'Infrarrojo (IR)';
+
+  // Tipos de LED con su Vf real
+  const LED_TYPES = {
+    'Infrarrojo (IR)': { vf: 1.2, maxMa: 70 },
+    'Rojo':            { vf: 1.8, maxMa: 65 },
+    'Naranja':         { vf: 2.0, maxMa: 60 },
+    'Amarillo':        { vf: 2.1, maxMa: 58 },
+    'Verde':           { vf: 2.2, maxMa: 55 },
+    'Azul':            { vf: 3.2, maxMa: 35 },
+    'Blanco':          { vf: 3.2, maxMa: 35 },
+    'UV':              { vf: 3.5, maxMa: 30 },
+  };
+
+  function selectLed(btn) {
+    document.querySelectorAll('.led-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    V_FORWARD = parseFloat(btn.dataset.vf);
+    LED_NAME  = btn.dataset.name;
+    document.getElementById('vf-display').textContent = V_FORWARD.toFixed(1) + ' V';
+    // nota dinámica según Vf
+    const notas = {
+      'Infrarrojo (IR)': 'Vf muy bajo: la barrera es pequeña, circula más corriente.',
+      'Rojo':            'Vf bajo: clásico en señales y alarmas.',
+      'Naranja':         'Vf estándar: el más común en simulaciones básicas.',
+      'Amarillo':        'Vf similar al naranja, ligeramente más exigente.',
+      'Verde':           'Vf un poco más alto: necesita más "empuje" del circuito.',
+      'Azul':            'Vf alto (3.2 V): consume mucho voltaje, queda menos para la resistencia.',
+      'Blanco':          'Vf alto (3.2 V): el LED blanco usa chip azul internamente.',
+      'UV':              'Vf más alto de todos (3.5 V): con batería de 9V apenas circula corriente.',
+    };
+    document.getElementById('vf-note').textContent = '— ' + (notas[LED_NAME] || '');
+    update();
+  }
+
+  // LED color stops: [threshold_mA, body_color, halo_color, ray_color]
+  // Con R_pot hasta 3000 la corriente baja a ~2 mA → recorre todo el espectro
+  const ledColors = [
+    [  0, '#1a1a1a', 'transparent',  'transparent'],  // apagado
+    [  1, '#2d0a3e', '#6b21a8',      '#c084fc'],      // violeta oscuro
+    [  3, '#3b0f6e', '#7c3aed',      '#a78bfa'],      // violeta medio
+    [  6, '#1e1b6e', '#3730a3',      '#818cf8'],      // indigo
+    [ 10, '#1e3a8a', '#1d4ed8',      '#93c5fd'],      // azul
+    [ 15, '#0e4a5a', '#0891b2',      '#67e8f9'],      // cian
+    [ 20, '#14532d', '#16a34a',      '#86efac'],      // verde
+    [ 26, '#365314', '#65a30d',      '#d9f99d'],      // verde-amarillo
+    [ 33, '#713f12', '#d97706',      '#fde68a'],      // ambar
+    [ 40, '#7c2d12', '#ea580c',      '#fdba74'],      // naranja
+    [ 50, '#7f1d1d', '#dc2626',      '#fca5a5'],      // rojo
+    [ 60, '#ff3300', '#ff6600',      '#ffdd00'],      // rojo-naranja brillante
+    [ 68, '#ff9900', '#ffcc00',      '#ffffff'],      // amarillo maximo
+  ];
+
+  function getLedColor(mA) {
+    let chosen = ledColors[0];
+    for (const c of ledColors) {
+      if (mA >= c[0]) chosen = c;
+    }
+    return chosen;
+  }
+
+  const slider      = document.getElementById('slider');
+  const rvalBadge   = document.getElementById('rval-badge');
+  const potLabel    = document.getElementById('pot-label');
+  const cRtot       = document.getElementById('c-rtot');
+  const cI          = document.getElementById('c-i');
+  const cVled       = document.getElementById('c-vled');
+  const iLabel      = document.getElementById('i-label');
+  const vPotLbl     = document.getElementById('v-pot-lbl');
+  const vResLbl     = document.getElementById('v-res-lbl');
+  const vLedLbl     = document.getElementById('v-led-lbl');
+  const ledBody     = document.getElementById('led-body');
+  const ledHalo     = document.getElementById('led-halo');
+  const ledRays     = document.getElementById('led-rays');
+  const barPot      = document.getElementById('bar-pot');
+  const barRes      = document.getElementById('bar-res');
+  const barLed      = document.getElementById('bar-led');
+  const bvPot       = document.getElementById('bv-pot');
+  const bvRes       = document.getElementById('bv-res');
+  const bvLed       = document.getElementById('bv-led');
+  const explanation = document.getElementById('explanation');
+
+  function update() {
+    const R_pot   = parseInt(slider.value);
+    const R_total = R_pot + R_FIXED;
+
+    let I_mA = 0, V_pot = 0, V_res = 0, V_led = 0;
+    if (VCC > V_FORWARD) {
+      I_mA  = ((VCC - V_FORWARD) / R_total) * 1000;
+      V_pot = (I_mA / 1000) * R_pot;
+      V_res = (I_mA / 1000) * R_FIXED;
+      V_led = V_FORWARD;
+    }
+    I_mA = Math.round(I_mA * 10) / 10;
+
+    // --- badge & labels ---
+    rvalBadge.textContent = R_pot + ' Ω';
+    potLabel.textContent  = R_pot + ' Ω';
+
+    // --- cards ---
+    cRtot.textContent = R_total;
+    cI.textContent    = I_mA.toFixed(1);
+    cVled.textContent = V_led.toFixed(1);
+
+    // --- svg labels ---
+    iLabel.textContent  = 'I = ' + I_mA.toFixed(1) + ' mA';
+    vPotLbl.textContent = '↓ ' + V_pot.toFixed(1) + ' V';
+    vResLbl.textContent = '↓ ' + V_res.toFixed(1) + ' V';
+    vLedLbl.textContent = '↓ ' + V_led.toFixed(1) + ' V';
+
+    // --- LED visuals ---
+    const col = getLedColor(I_mA);
+    const maxMa = (LED_TYPES[LED_NAME] || {maxMa:70}).maxMa;
+    const brightness = Math.min(1, I_mA / maxMa);
+
+    ledBody.setAttribute('fill', col[1]);
+    ledBody.setAttribute('stroke', brightness > 0.05 ? col[2] : '#888');
+
+    if (brightness > 0.04) {
+      ledHalo.setAttribute('fill', col[2]);
+      ledHalo.setAttribute('opacity', (brightness * 0.7).toFixed(2));
+      ledRays.setAttribute('opacity', (brightness * 0.95).toFixed(2));
+      // ray color
+      ledRays.querySelectorAll('line').forEach(l => l.setAttribute('stroke', col[3]));
+    } else {
+      ledHalo.setAttribute('opacity', '0');
+      ledRays.setAttribute('opacity', '0');
+    }
+
+    // --- voltage bars ---
+    const maxV = VCC;
+    barPot.style.width = Math.round((V_pot / maxV) * 100) + '%';
+    barRes.style.width = Math.round((V_res / maxV) * 100) + '%';
+    barLed.style.width = Math.round((V_led / maxV) * 100) + '%';
+    bvPot.textContent  = V_pot.toFixed(1) + ' V';
+    bvRes.textContent  = V_res.toFixed(1) + ' V';
+    bvLed.textContent  = V_led.toFixed(1) + ' V';
+
+    // --- slider gradient ---
+    const pct = (R_pot / 2000) * 100;
+    slider.style.background =
+      `linear-gradient(to right, #f97316 ${pct}%, #d1d5db ${pct}%)`;
+
+    // --- explanation ---
+    let emoji, msg;
+    if (R_pot === 0) {
+      emoji = '⚡';
+      msg = `Resistencia en CERO: corriente máxima (${I_mA.toFixed(1)} mA) → LED amarillo brillante. Sin la resistencia fija de 100 Ω se quemaría al instante.`;
+    } else if (I_mA >= 60) {
+      emoji = '🌟';
+      msg = `Resistencia muy baja (${R_pot} Ω): casi sin oposición, ${I_mA.toFixed(1)} mA → LED naranja-amarillo brillante. El potenciómetro apenas consume ${V_pot.toFixed(1)} V.`;
+    } else if (I_mA >= 50) {
+      emoji = '🔴';
+      msg = `Resistencia baja (${R_pot} Ω): ${I_mA.toFixed(1)} mA → LED rojo intenso. La corriente aún es alta, el voltaje se reparte poco.`;
+    } else if (I_mA >= 40) {
+      emoji = '🟠';
+      msg = `Resistencia media-baja (${R_pot} Ω): ${I_mA.toFixed(1)} mA → LED naranja. El potenciómetro "acapara" ${V_pot.toFixed(1)} V de los 9 V totales.`;
+    } else if (I_mA >= 33) {
+      emoji = '🟡';
+      msg = `Resistencia media (${R_pot} Ω): ${I_mA.toFixed(1)} mA → LED ámbar. El voltaje se reparte más: ${V_pot.toFixed(1)} V en el potenciómetro, ${V_res.toFixed(1)} V en la resistencia fija, ${V_led.toFixed(1)} V en el LED.`;
+    } else if (I_mA >= 26) {
+      emoji = '🟢';
+      msg = `Resistencia media-alta (${R_pot} Ω): ${I_mA.toFixed(1)} mA → LED verde-amarillo. La oposición empieza a reducir bastante la corriente.`;
+    } else if (I_mA >= 20) {
+      emoji = '💚';
+      msg = `Resistencia alta (${R_pot} Ω): ${I_mA.toFixed(1)} mA → LED verde. El potenciómetro "consume" ya ${V_pot.toFixed(1)} V de los 9 V.`;
+    } else if (I_mA >= 15) {
+      emoji = '🩵';
+      msg = `Resistencia alta (${R_pot} Ω): ${I_mA.toFixed(1)} mA → LED cian. La corriente sigue bajando conforme sube la resistencia.`;
+    } else if (I_mA >= 10) {
+      emoji = '🔵';
+      msg = `Resistencia muy alta (${R_pot} Ω): ${I_mA.toFixed(1)} mA → LED azul. Ya queda poca corriente disponible para el LED.`;
+    } else if (I_mA >= 6) {
+      emoji = '🟣';
+      msg = `Resistencia muy alta (${R_pot} Ω): solo ${I_mA.toFixed(1)} mA → LED índigo tenue. El potenciómetro acapara ${V_pot.toFixed(1)} V de los 9 V.`;
+    } else if (I_mA >= 2) {
+      emoji = '🫧';
+      msg = `Resistencia casi al máximo (${R_pot} Ω): ${I_mA.toFixed(1)} mA → LED violeta muy tenue. La resistencia enorme limita casi toda la corriente.`;
+    } else {
+      emoji = '🌑';
+      msg = `Resistencia máxima (${R_pot} Ω): corriente casi cero (${I_mA.toFixed(1)} mA) → LED apagado. El potenciómetro acapara ${V_pot.toFixed(1)} V, casi todo el voltaje de la batería.`;
+    }
+    explanation.innerHTML = emoji + ' <strong>' + msg.split(':')[0] + ':</strong>' +
+      (msg.includes(':') ? msg.slice(msg.indexOf(':') + 1) : '');
+    explanation.style.borderColor = I_mA > 40 ? '#f97316' : I_mA > 15 ? '#f59e0b' : I_mA > 5 ? '#3b82f6' : '#94a3b8';
+  }
+
+  slider.addEventListener('input', update);
+  update();
+</script>
+</body>
+</html>
