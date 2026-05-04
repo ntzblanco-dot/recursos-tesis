@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ Condensador RC — Simulación</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: #0a0e1a;
+            color: #e0e8ff;
+            min-height: 100vh;
+        }
+        .container { max-width: 1380px; margin: 0 auto; padding: 20px; }
+
+        header {
+            text-align: center;
+            padding: 24px 20px 18px;
+            border-bottom: 1px solid rgba(0,212,255,0.12);
+            margin-bottom: 22px;
+        }
+        h1 {
+            font-size: 2.2em; font-weight: 700; letter-spacing: 3px;
+            color: #00d4ff; text-transform: uppercase;
+            text-shadow: 0 0 30px rgba(0,212,255,0.35);
+        }
+        .subtitle { font-size: 0.95em; color: #6a7f99; margin-top: 5px; letter-spacing: 1px; }
+
+        .main-content { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+        @media (max-width: 1000px) { .main-content { grid-template-columns: 1fr; } }
+
+        .visualization-area {
+            background: #0d1120; border-radius: 16px; padding: 18px;
+            border: 1px solid rgba(0,212,255,0.13);
+        }
+        .canvas-container {
+            width: 100%; height: 560px; border-radius: 10px;
+            overflow: hidden; background: #080b14;
+            border: 1px solid rgba(0,212,255,0.07);
+        }
+        #mainCanvas { width: 100%; height: 100%; display: block; }
+
+        .progress-container { margin-top: 14px; }
+        .progress-label {
+            display: flex; justify-content: space-between;
+            font-size: 0.82em; color: #6a7f99; margin-bottom: 5px;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        .progress-bar { width: 100%; height: 7px; background: #111827; border-radius: 4px; overflow: hidden; }
+        .progress-fill {
+            height: 100%; background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            border-radius: 4px; transition: width 0.12s ease;
+        }
+
+        .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
+        .legend-item { display: flex; align-items: center; gap: 7px; font-size: 0.8em; color: #6a7f99; font-family: 'Share Tech Mono', monospace; }
+        .leg-dot { width: 11px; height: 11px; border-radius: 50%; }
+
+        .control-panel { display: flex; flex-direction: column; gap: 14px; }
+        .panel-block {
+            background: #0d1120; border-radius: 14px; padding: 16px;
+            border: 1px solid rgba(0,212,255,0.1);
+        }
+        .panel-block h3 {
+            font-size: 0.72em; letter-spacing: 3px; text-transform: uppercase;
+            color: #3a5070; margin-bottom: 13px; font-family: 'Share Tech Mono', monospace;
+        }
+
+        .btn {
+            width: 100%; padding: 13px; font-family: 'Rajdhani', sans-serif;
+            font-size: 0.95em; font-weight: 700; letter-spacing: 2px;
+            text-transform: uppercase; border: none; border-radius: 8px;
+            cursor: pointer; transition: all 0.18s ease; margin-bottom: 9px;
+        }
+        .btn:last-child { margin-bottom: 0; }
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .btn-charge    { background:linear-gradient(135deg,#003f5c,#00d4ff18);color:#00d4ff;border:1px solid #00d4ff44; }
+        .btn-charge:hover:not(:disabled)    { background:linear-gradient(135deg,#00d4ff22,#00d4ff38);box-shadow:0 0 18px rgba(0,212,255,.25); }
+
+        .btn-discharge { background:linear-gradient(135deg,#3d0000,#ff6b6b18);color:#ff6b6b;border:1px solid #ff6b6b44; }
+        .btn-discharge:hover:not(:disabled) { background:linear-gradient(135deg,#ff6b6b22,#ff6b6b38);box-shadow:0 0 18px rgba(255,107,107,.25); }
+
+        .btn-pause     { background:linear-gradient(135deg,#2a2000,#ffd93d18);color:#ffd93d;border:1px solid #ffd93d44; }
+        .btn-pause:hover:not(:disabled)     { background:linear-gradient(135deg,#ffd93d22,#ffd93d38);box-shadow:0 0 18px rgba(255,217,61,.25); }
+        .btn-pause.paused { background:linear-gradient(135deg,#002a3d,#00d4ff18);color:#00d4ff;border-color:#00d4ff44; }
+
+        .btn-reset     { background:#111827;color:#4a5568;border:1px solid #2d3748; }
+        .btn-reset:hover:not(:disabled) { color:#a0aec0;border-color:#4a5568; }
+
+        .metric { display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04); }
+        .metric:last-child { border-bottom:none; }
+        .metric-label  { font-size:.82em;color:#4a5568;font-family:'Share Tech Mono',monospace; }
+        .metric-value  { font-size:1.05em;font-weight:700;color:#00d4ff;font-family:'Share Tech Mono',monospace; }
+
+        .timer-block { background:#080b14;border:1px solid rgba(123,44,191,.28);border-radius:12px;padding:14px;text-align:center; }
+        .timer-label-t { font-size:.68em;letter-spacing:3px;color:#3a5070;font-family:'Share Tech Mono',monospace; }
+        .timer-value   { font-size:2em;font-weight:700;color:#ffd93d;font-family:'Share Tech Mono',monospace;margin:5px 0; }
+        .timer-phase   { font-size:.78em;color:#51cf66;letter-spacing:1px; }
+
+        .state-badge {
+            display:inline-block;padding:3px 11px;border-radius:20px;
+            font-size:.72em;font-weight:700;letter-spacing:2px;
+            font-family:'Share Tech Mono',monospace;
+        }
+        .s-idle        { background:#1a2030;color:#4a5568;border:1px solid #2d3748; }
+        .s-charging    { background:#003a50;color:#00d4ff;border:1px solid #00d4ff44;animation:blink 1.1s infinite; }
+        .s-discharging { background:#3d1010;color:#ff6b6b;border:1px solid #ff6b6b44;animation:blink 1.1s infinite; }
+        .s-full        { background:#103d10;color:#51cf66;border:1px solid #51cf6655; }
+        .s-paused      { background:#2a2000;color:#ffd93d;border:1px solid #ffd93d44; }
+        @keyframes blink { 0%,100%{opacity:1}50%{opacity:.55} }
+
+        .explanation-panel { margin-top:18px;background:#0d1120;border-radius:14px;padding:20px;border:1px solid rgba(0,212,255,.09); }
+        .exp-title   { font-size:.92em;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#3a5070;margin-bottom:10px;font-family:'Share Tech Mono',monospace; }
+        .exp-content { font-size:.92em;line-height:1.75;color:#8a9bb0; }
+        .exp-content .hl   { color:#00d4ff;font-weight:600; }
+        .exp-content .warn { color:#ff6b6b;font-weight:600; }
+        .exp-content .ok   { color:#51cf66;font-weight:600; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>⚡ Condensador RC — Carga &amp; Descarga</h1>
+        <p class="subtitle">Transferencia real de electrones entre placas A y B a través del circuito cerrado</p>
+    </header>
+
+    <div class="main-content">
+        <div class="visualization-area">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px;">
+                <span style="font-size:.78em;color:#3a5070;font-family:'Share Tech Mono',monospace;letter-spacing:2px;">DIAGRAMA DEL CIRCUITO RC</span>
+                <span class="state-badge s-idle" id="stateIndicator">ESPERA</span>
+            </div>
+            <div class="canvas-container">
+                <canvas id="mainCanvas"></canvas>
+            </div>
+            <div class="legend">
+                <div class="legend-item"><div class="leg-dot" style="background:#ffd93d;box-shadow:0 0 5px #ffd93d88;"></div>Electrón (e⁻)</div>
+                <div class="legend-item"><div class="leg-dot" style="background:#ff6b6b;"></div>Déficit → (+)</div>
+                <div class="legend-item"><div class="leg-dot" style="background:#4ecdc4;"></div>Exceso → (−)</div>
+                <div class="legend-item"><div class="leg-dot" style="background:#ffd93d;border-radius:2px;"></div>Resistencia R</div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-label">
+                    <span>TRANSFERENCIA DE CARGA</span>
+                    <span id="chargePercent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="panel-block">
+                <h3>Controles</h3>
+                <button class="btn btn-charge"    id="btnCharge"    onclick="startCharging()">▶ INICIAR CARGA</button>
+                <button class="btn btn-discharge" id="btnDischarge" onclick="startDischarging()" disabled>⬇ INICIAR DESCARGA</button>
+                <button class="btn btn-pause"     id="btnPause"     onclick="togglePause()" disabled>⏸ PAUSAR</button>
+                <button class="btn btn-reset"                       onclick="resetSimulation()">↺ REINICIAR</button>
+            </div>
+
+            <div class="panel-block timer-block">
+                <div class="timer-label-t">TIEMPO TRANSCURRIDO</div>
+                <div class="timer-value" id="timerValue">0.00 s</div>
+                <div class="timer-phase" id="timerPhase">En espera...</div>
+            </div>
+
+            <div class="panel-block">
+                <h3>Mediciones</h3>
+                <div class="metric">
+                    <span class="metric-label">Voltaje (Vc)</span>
+                    <span class="metric-value" id="voltageValue">0.0 V</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Corriente (I)</span>
+                    <span class="metric-value" id="currentValue">0.0 mA</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Carga (Q)</span>
+                    <span class="metric-value" id="chargeValue">0 μC</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">e⁻ Placa A / B</span>
+                    <span class="metric-value" id="electronCount">28 / 28</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="explanation-panel">
+        <div class="exp-title" id="stepTitle">▸ Estado inicial — neutro</div>
+        <div class="exp-content" id="stepContent">
+            Ambas placas tienen <span class="hl">28 electrones</span> cada una — sistema en equilibrio. Al iniciar la carga, la batería forzará a los electrones a salir de la <span class="warn">Placa A</span> y acumularse en la <span class="hl">Placa B</span> viajando por el circuito externo. El dieléctrico <strong>nunca es cruzado</strong> por electrones. Podés <span class="hl">pausar</span> en cualquier momento para leer el estado actual.
+        </div>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  CANVAS
+// ═══════════════════════════════════════════
+const canvas = document.getElementById('mainCanvas');
+const ctx    = canvas.getContext('2d');
+
+function resizeCanvas() {
+    canvas.width  = canvas.offsetWidth  * window.devicePixelRatio;
+    canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+}
+resizeCanvas();
+window.addEventListener('resize', () => { resizeCanvas(); if (!animId) drawScene(); });
+
+// ═══════════════════════════════════════════
+//  CONSTANTS & STATE
+// ═══════════════════════════════════════════
+const NEUTRAL = 28;   // electrons per plate at rest
+const MAX_TX  = 28;   // max electrons transferred (A→B)
+
+let state = {
+    mode: 'idle',       // idle | charging | discharging | full | paused
+    prevMode: 'idle',
+    chargeLevel: 0,     // 0–100
+    voltage: 0,
+    current: 0,
+    electronsA: NEUTRAL,
+    electronsB: NEUTRAL,
+    time: 0
+};
+
+let elapsedTime = 0, lastFrameTime = 0;
+let animId = null, paused = false;
+let wireElectrons = [];  // particles on wires
+
+// ═══════════════════════════════════════════
+//  LAYOUT
+// ═══════════════════════════════════════════
+function getDim() {
+    const W = canvas.offsetWidth, H = canvas.offsetHeight;
+    const left = 95, right = W - 50, top = 70, bottom = H - 60;
+    const cx = W/2, cy = H/2;
+
+    const plateH = (bottom - top) * 0.54;
+    const plateW = 16, gap = 64;
+    const capAx  = cx - gap/2 - plateW;
+    const capBx  = cx + gap/2;
+    const capTop = cy - plateH/2;
+    const capBot = cy + plateH/2;
+    const capAMid = capAx + plateW/2;
+    const capBMid = capBx + plateW/2;
+
+    const resX = cx + (right - cx)*0.5 + 10;
+    const resY = bottom;
+
+    return { W, H, cx, cy, left, right, top, bottom,
+             capAx, capBx, capTop, capBot, plateH, plateW, gap,
+             capAMid, capBMid, resX, resY };
+}
+
+// ═══════════════════════════════════════════
+//  WIRE PATHS
+//  CHARGING:    Plate A top → (exit A) → top rail left → left side (batt) → bottom → resistor → right side → top rail right → Plate B top (enter B)
+//  DISCHARGING: Plate B top → (exit B) → top rail right → right side → resistor → bottom → left side (batt) → top rail left → Plate A top (enter A)
+// ═══════════════════════════════════════════
+function getPaths(d) {
+    const { left, right, top, bottom, capAMid, capBMid, capTop } = d;
+
+    const chargePath = [
+        [capAMid, capTop],       // EXIT plate A
+        [capAMid, top],
+        [left,    top],
+        [left,    bottom],       // through battery zone
+        [right,   bottom],       // through resistor
+        [right,   top],
+        [capBMid, top],
+        [capBMid, capTop],       // ENTER plate B
+    ];
+
+    const dischargePath = [
+        [capBMid, capTop],       // EXIT plate B
+        [capBMid, top],
+        [right,   top],
+        [right,   bottom],       // through resistor
+        [left,    bottom],
+        [left,    top],          // through battery zone
+        [capAMid, top],
+        [capAMid, capTop],       // ENTER plate A
+    ];
+
+    return { chargePath, dischargePath };
+}
+
+function pointOnPath(path, t) {
+    let total = 0;
+    const lens = [];
+    for (let i=0; i<path.length-1; i++) {
+        const dx=path[i+1][0]-path[i][0], dy=path[i+1][1]-path[i][1];
+        const l=Math.sqrt(dx*dx+dy*dy); lens.push(l); total+=l;
+    }
+    let rem = Math.max(0,Math.min(1,t)) * total;
+    for (let i=0; i<lens.length; i++) {
+        if (rem <= lens[i]+1e-6) {
+            const f = lens[i]<1e-6 ? 0 : rem/lens[i];
+            return { x:path[i][0]+f*(path[i+1][0]-path[i][0]),
+                     y:path[i][1]+f*(path[i+1][1]-path[i][1]) };
+        }
+        rem -= lens[i];
+    }
+    return { x:path[path.length-1][0], y:path[path.length-1][1] };
+}
+
+// ═══════════════════════════════════════════
+//  DRAW HELPERS
+// ═══════════════════════════════════════════
+function roundRect(x,y,w,h,r) {
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.lineTo(x+w-r,y);    ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r);  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h);    ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r);      ctx.quadraticCurveTo(x,y,x+r,y);
+    ctx.closePath();
+}
+
+function drawElectron(x,y,r,alpha=1) {
+    ctx.globalAlpha = alpha;
+    const g = ctx.createRadialGradient(x,y,0,x,y,r*2.5);
+    g.addColorStop(0,'rgba(255,255,210,.95)');
+    g.addColorStop(.35,'rgba(255,217,61,.85)');
+    g.addColorStop(1,'rgba(255,180,0,0)');
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.arc(x,y,r*2.5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#ffd93d';
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#000';
+    ctx.font=`bold ${Math.max(7,r*1.1)}px Arial`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('−',x,y+.5);
+    ctx.textBaseline='alphabetic';
+    ctx.globalAlpha=1;
+}
+
+// ═══════════════════════════════════════════
+//  DRAW WIRES
+// ═══════════════════════════════════════════
+function drawWires(d) {
+    const {left,right,top,bottom,capAMid,capBMid,capTop} = d;
+    ctx.lineCap='round'; ctx.lineJoin='round';
+
+    const base   = '#263555';
+    const active = state.mode==='charging' ? '#005570' :
+                   state.mode==='discharging' ? '#551520' : base;
+
+    function seg(pts,col,w=3.5) {
+        ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+        for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+        ctx.strokeStyle=col; ctx.lineWidth=w; ctx.stroke();
+    }
+
+    const isAct = state.mode==='charging'||state.mode==='discharging';
+    seg([[capAMid,capTop],[capAMid,top],[left,top]],  isAct?active:base);
+    seg([[left,top],[left,bottom]],                   isAct?active:base);
+    seg([[left,bottom],[right,bottom]],               isAct?active:base);
+    seg([[right,bottom],[right,top]],                 isAct?active:base);
+    seg([[right,top],[capBMid,top],[capBMid,capTop]], isAct?active:base);
+
+    // Corner junction dots
+    [[left,top],[right,top],[right,bottom],[left,bottom]].forEach(([x,y])=>{
+        ctx.fillStyle='#1e2d48';
+        ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill();
+    });
+}
+
+// ═══════════════════════════════════════════
+//  DRAW BATTERY
+// ═══════════════════════════════════════════
+function drawBattery(d) {
+    const x=d.left, y=d.cy, bw=22, bh=60;
+
+    ctx.fillStyle='#111827'; ctx.strokeStyle='#2a3a55'; ctx.lineWidth=2;
+    roundRect(x-bw/2,y-bh/2,bw,bh,6); ctx.fill(); ctx.stroke();
+
+    // Terminal stubs blending into wires
+    ctx.strokeStyle='#2a3a55'; ctx.lineWidth=3.5;
+    ctx.beginPath(); ctx.moveTo(x,y-bh/2); ctx.lineTo(x,d.top);    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x,y+bh/2); ctx.lineTo(x,d.bottom); ctx.stroke();
+
+    // + symbol
+    ctx.strokeStyle='#ff6b6b'; ctx.lineWidth=2.5;
+    ctx.beginPath();
+    ctx.moveTo(x-7,y-17); ctx.lineTo(x+7,y-17);
+    ctx.moveTo(x,  y-24); ctx.lineTo(x,  y-10);
+    ctx.stroke();
+    // − symbol
+    ctx.strokeStyle='#4ecdc4'; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(x-7,y+15); ctx.lineTo(x+7,y+15); ctx.stroke();
+
+    ctx.font='600 10px Share Tech Mono,monospace'; ctx.textAlign='center';
+    ctx.fillStyle='#ff6b6b'; ctx.fillText('+',x+17,y-14);
+    ctx.fillStyle='#4ecdc4'; ctx.fillText('−',x+17,y+18);
+    ctx.fillStyle='#2a3a55';
+    ctx.fillText('12V',x,y+bh/2+16);
+    ctx.fillText('FUENTE',x,y-bh/2-12);
+}
+
+// ═══════════════════════════════════════════
+//  DRAW RESISTOR
+// ═══════════════════════════════════════════
+function drawResistor(d) {
+    const x=d.resX, y=d.resY;
+    const isAct=(state.mode==='charging'||state.mode==='discharging')&&state.current>.3;
+    const col=isAct?(state.mode==='charging'?'#00d4ff':'#ff6b6b'):'#ffd93d';
+
+    ctx.shadowColor=col; ctx.shadowBlur=isAct?18:6;
+    const segs=8, sw=9, sx=x-segs*sw/2;
+    ctx.strokeStyle=col; ctx.lineWidth=2.5; ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(sx-14,y); ctx.lineTo(sx,y);
+    for(let i=0;i<segs;i++){
+        ctx.lineTo(sx+i*sw+sw/2, y+(i%2===0?-12:12));
+        ctx.lineTo(sx+(i+1)*sw,  y);
+    }
+    ctx.lineTo(sx+segs*sw+14,y);
+    ctx.stroke();
+    ctx.shadowBlur=0; ctx.lineCap='butt';
+
+    ctx.font='700 12px Share Tech Mono,monospace'; ctx.textAlign='center';
+    ctx.fillStyle=col; ctx.fillText('R',x,y-17);
+    ctx.font='600 10px Rajdhani,sans-serif'; ctx.fillStyle='#3a5070';
+    ctx.fillText('1 kΩ',x,y+18);
+    if(isAct){
+        ctx.font='600 9px Share Tech Mono,monospace'; ctx.fillStyle=col;
+        ctx.fillText(state.mode==='charging'?'⚡ LIMITANDO':'⚡ DISIPANDO',x,y+30);
+    }
+}
+
+// ═══════════════════════════════════════════
+//  DRAW CAPACITOR PLATES
+// ═══════════════════════════════════════════
+function drawCapacitorPlates(d) {
+    const {capAx,capBx,capTop,capBot,plateW,gap,capAMid,capBMid} = d;
+    const h=capBot-capTop, cl=state.chargeLevel/100;
+
+    // Plate A → loses electrons → gets more red/positive
+    const rA=Math.floor(60+cl*195), gA=Math.floor(90-cl*30), bA=Math.floor(140-cl*80);
+    ctx.fillStyle=`rgb(${rA},${gA},${bA})`;
+    ctx.shadowColor=cl>.05?'rgba(255,107,107,.45)':'transparent';
+    ctx.shadowBlur=cl>.05?16:0;
+    roundRect(capAx,capTop,plateW,h,4); ctx.fill();
+    ctx.shadowBlur=0;
+
+    // Plate B → gains electrons → gets more teal/negative
+    const rB=Math.floor(30-cl*10), gB=Math.floor(140+cl*65), bB=Math.floor(170+cl*40);
+    ctx.fillStyle=`rgb(${rB},${gB},${bB})`;
+    ctx.shadowColor=cl>.05?'rgba(78,205,196,.45)':'transparent';
+    ctx.shadowBlur=cl>.05?16:0;
+    roundRect(capBx,capTop,plateW,h,4); ctx.fill();
+    ctx.shadowBlur=0;
+
+    // Dielectric
+    ctx.fillStyle='rgba(123,44,191,.06)';
+    ctx.fillRect(capAx+plateW,capTop,gap-plateW,h);
+
+    // Electric field lines
+    if(cl>.05){
+        const nL=Math.max(2,Math.floor(cl*8)), sp=h/(nL+1);
+        ctx.strokeStyle=`rgba(0,212,255,${cl*.42})`;
+        ctx.lineWidth=1+cl*1.5; ctx.setLineDash([4,6]);
+        for(let i=1;i<=nL;i++){
+            const ly=capTop+sp*i;
+            ctx.beginPath(); ctx.moveTo(capAx+plateW+4,ly); ctx.lineTo(capBx-4,ly); ctx.stroke();
+            ctx.setLineDash([]);
+            const aw=5+cl*5;
+            ctx.fillStyle=`rgba(0,212,255,${cl*.65})`;
+            ctx.beginPath();
+            ctx.moveTo(capBx-4,ly); ctx.lineTo(capBx-4-aw,ly-aw/2); ctx.lineTo(capBx-4-aw,ly+aw/2);
+            ctx.closePath(); ctx.fill();
+            ctx.setLineDash([4,6]);
+        }
+        ctx.setLineDash([]);
+    }
+
+    // Labels
+    ctx.font='700 11px Share Tech Mono,monospace'; ctx.textAlign='center';
+    ctx.fillStyle=cl>.08?'#ff9999':'#3a5070'; ctx.fillText('PLACA A',capAMid,capTop-20);
+    ctx.fillStyle=cl>.08?'#4ecdc4':'#3a5070'; ctx.fillText('PLACA B',capBMid,capTop-20);
+    if(cl>.05){
+        ctx.font='700 14px Arial';
+        ctx.fillStyle=`rgba(255,120,80,${cl})`;  ctx.fillText('+',capAMid,capBot+18);
+        ctx.fillStyle=`rgba(78,205,196,${cl})`; ctx.fillText('−',capBMid,capBot+18);
+    }
+
+    // Rotated label
+    ctx.save();
+    ctx.font='700 10px Share Tech Mono,monospace'; ctx.fillStyle='#1e2d40';
+    ctx.translate(d.cx,d.cy); ctx.rotate(-Math.PI/2);
+    ctx.fillText('CONDENSADOR  C',0,0); ctx.restore();
+}
+
+// ═══════════════════════════════════════════
+//  DRAW ELECTRONS ON PLATES
+//  Both plates always show their current count.
+//  Plate A: electrons drawn on right side of plate (inner face).
+//  Plate B: electrons drawn on left side of plate (inner face).
+// ═══════════════════════════════════════════
+function drawPlateElectrons(d) {
+    const {capAx,capBx,capTop,capBot,plateW} = d;
+    const h=capBot-capTop;
+
+    function grid(startX, count, rightAlign) {
+        const cols=2, padY=12;
+        const spX=(plateW-4)/Math.max(1,cols-1);
+        const rows=Math.ceil(count/cols);
+        const spY=Math.min(14,(h-padY*2)/Math.max(1,rows-1));
+        for(let i=0;i<count;i++){
+            const col=rightAlign ? (cols-1-(i%cols)) : (i%cols);
+            const row=Math.floor(i/cols);
+            const ex=startX+2+col*spX;
+            const ey=capTop+padY+row*spY;
+            if(ey<capBot-5) drawElectron(ex,ey,4.5);
+        }
+    }
+
+    // Plate A electrons (placed on left/outer side since inner face gets depleted)
+    grid(capAx, state.electronsA, false);
+
+    // Plate B electrons (placed starting from left edge of plate B)
+    grid(capBx, state.electronsB, false);
+
+    // Show + deficit markers on Plate A when it's lost electrons
+    const deficit = NEUTRAL - state.electronsA;
+    if(deficit>0){
+        ctx.font='bold 12px Arial'; ctx.textAlign='center';
+        ctx.fillStyle=`rgba(255,140,80,${Math.min(1,deficit/NEUTRAL*2)})`;
+        for(let i=0;i<Math.min(deficit,12);i++){
+            const col=i%2, row=Math.floor(i/2);
+            const ex=capAx+3+col*(plateW-6);
+            const ey=capTop+12+row*14;
+            if(ey<capBot-5) ctx.fillText('+',ex,ey);
+        }
+    }
+}
+
+// ═══════════════════════════════════════════
+//  WIRE ELECTRONS
+// ═══════════════════════════════════════════
+function updateWireElectrons(d) {
+    const paths=getPaths(d);
+    const isC=state.mode==='charging', isD=state.mode==='discharging';
+
+    if((isC||isD)&&state.current>.4){
+        const prob=Math.min(.4,state.current/30);
+        if(Math.random()<prob&&wireElectrons.length<14){
+            wireElectrons.push({
+                t: 0,
+                speed: (.002+Math.random()*.002)*(.3+state.current/12),
+                path: isC?'charge':'discharge'
+            });
+        }
+    }
+
+    wireElectrons=wireElectrons.filter(e=>{
+        e.t+=e.speed;
+        if(e.t>=1) return false;
+        const path=e.path==='charge'?paths.chargePath:paths.dischargePath;
+        const pos=pointOnPath(path,e.t);
+        drawElectron(pos.x,pos.y,7);
+        return true;
+    });
+}
+
+// ═══════════════════════════════════════════
+//  MAIN DRAW (static)
+// ═══════════════════════════════════════════
+function drawScene() {
+    const d=getDim();
+    ctx.clearRect(0,0,d.W,d.H);
+    drawWires(d); drawBattery(d); drawResistor(d);
+    drawCapacitorPlates(d); drawPlateElectrons(d);
+    // static wire electrons (paused state)
+    const paths=getPaths(d);
+    wireElectrons.forEach(e=>{
+        const path=e.path==='charge'?paths.chargePath:paths.dischargePath;
+        const pos=pointOnPath(path,e.t);
+        drawElectron(pos.x,pos.y,7);
+    });
+}
+
+// ═══════════════════════════════════════════
+//  ANIMATION LOOP
+// ═══════════════════════════════════════════
+const TAU_C=185, TAU_D=155;
+
+function animate(now) {
+    if(lastFrameTime!==0) elapsedTime+=(now-lastFrameTime)/1000;
+    lastFrameTime=now;
+
+    const d=getDim();
+    ctx.clearRect(0,0,d.W,d.H);
+    drawWires(d); drawBattery(d); drawResistor(d);
+    drawCapacitorPlates(d); drawPlateElectrons(d);
+    updateWireElectrons(d);
+
+    if(state.mode==='charging'){
+        state.chargeLevel=Math.min(100,100*(1-Math.exp(-state.time/TAU_C)));
+        state.voltage=12*(state.chargeLevel/100);
+        state.current=12*Math.exp(-state.time/TAU_C);
+        const tx=Math.round((state.chargeLevel/100)*MAX_TX);
+        state.electronsA=NEUTRAL-tx;
+        state.electronsB=NEUTRAL+tx;
+        state.time++;
+        updateTimerDisplay(elapsedTime.toFixed(2),'⚡ Cargando...');
+
+        if(state.chargeLevel>=99.5){
+            const ft=elapsedTime.toFixed(2);
+            state.mode='full'; state.current=0; state.chargeLevel=100;
+            state.electronsA=NEUTRAL-MAX_TX; state.electronsB=NEUTRAL+MAX_TX;
+            wireElectrons=[];
+            updateUI(); updateStateIndicator('full');
+            updateTimerDisplay(ft,'✓ Carga completada');
+            updateExplanation('full',ft);
+            drawScene();
+            animId=null; return;
+        }
+    }
+
+    if(state.mode==='discharging'){
+        state.chargeLevel=Math.max(0,state.chargeLevel*Math.exp(-1/TAU_D));
+        state.voltage=12*(state.chargeLevel/100);
+        state.current=(state.chargeLevel/100)*12;
+        const tx=Math.round((state.chargeLevel/100)*MAX_TX);
+        state.electronsA=NEUTRAL-tx;
+        state.electronsB=NEUTRAL+tx;
+        state.time++;
+        updateTimerDisplay(elapsedTime.toFixed(2),'🔌 Descargando...');
+
+        if(state.chargeLevel<=.5){
+            const ft=elapsedTime.toFixed(2);
+            state.mode='idle'; state.current=0; state.chargeLevel=0; state.voltage=0;
+            state.electronsA=NEUTRAL; state.electronsB=NEUTRAL;
+            wireElectrons=[];
+            updateUI(); updateStateIndicator('idle');
+            updateTimerDisplay(ft,'✓ Descarga completada');
+            updateExplanation('empty',ft);
+            drawScene();
+            animId=null; return;
+        }
+    }
+
+    updateIndicators();
+    animId=requestAnimationFrame(animate);
+}
+
+// ═══════════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════════
+function startCharging(){
+    if(state.mode!=='idle') return;
+    state.mode='charging'; state.time=0;
+    state.electronsA=NEUTRAL; state.electronsB=NEUTRAL;
+    elapsedTime=0; lastFrameTime=0; wireElectrons=[];
+    document.getElementById('btnCharge').disabled=true;
+    document.getElementById('btnDischarge').disabled=true;
+    document.getElementById('btnPause').disabled=false;
+    paused=false; syncPauseBtn();
+    updateStateIndicator('charging'); updateExplanation('charging');
+    animId=requestAnimationFrame(animate);
+}
+
+function startDischarging(){
+    if(state.mode!=='full') return;
+    state.mode='discharging'; state.time=0;
+    elapsedTime=0; lastFrameTime=0; wireElectrons=[];
+    document.getElementById('btnCharge').disabled=true;
+    document.getElementById('btnDischarge').disabled=true;
+    document.getElementById('btnPause').disabled=false;
+    paused=false; syncPauseBtn();
+    updateStateIndicator('discharging'); updateExplanation('discharging');
+    animId=requestAnimationFrame(animate);
+}
+
+function togglePause(){
+    if(state.mode==='charging'||state.mode==='discharging'){
+        if(animId){cancelAnimationFrame(animId);animId=null;}
+        state.prevMode=state.mode; state.mode='paused'; paused=true;
+        lastFrameTime=0;
+        updateStateIndicator('paused');
+        updateTimerDisplay(elapsedTime.toFixed(2),'⏸ Pausado — podés leer el estado');
+        syncPauseBtn();
+    } else if(state.mode==='paused'){
+        state.mode=state.prevMode; paused=false;
+        updateStateIndicator(state.mode); syncPauseBtn();
+        animId=requestAnimationFrame(animate);
+    }
+}
+
+function syncPauseBtn(){
+    const btn=document.getElementById('btnPause');
+    if(paused){
+        btn.textContent='▶ REANUDAR'; btn.classList.add('paused');
+    } else {
+        btn.textContent='⏸ PAUSAR'; btn.classList.remove('paused');
+    }
+}
+
+function resetSimulation(){
+    if(animId){cancelAnimationFrame(animId);animId=null;}
+    state={mode:'idle',prevMode:'idle',chargeLevel:0,voltage:0,current:0,
+           electronsA:NEUTRAL,electronsB:NEUTRAL,time:0};
+    elapsedTime=0; lastFrameTime=0; wireElectrons=[]; paused=false;
+    document.getElementById('btnCharge').disabled=false;
+    document.getElementById('btnDischarge').disabled=true;
+    document.getElementById('btnPause').disabled=true;
+    syncPauseBtn(); updateStateIndicator('idle'); updateUI();
+    updateTimerDisplay('0.00','En espera...');
+    updateExplanation('idle'); drawScene();
+}
+
+// ═══════════════════════════════════════════
+//  UI
+// ═══════════════════════════════════════════
+function updateUI(){
+    document.getElementById('chargePercent').textContent=Math.round(state.chargeLevel)+'%';
+    document.getElementById('progressFill').style.width=state.chargeLevel+'%';
+    document.getElementById('btnCharge').disabled=state.mode!=='idle';
+    document.getElementById('btnDischarge').disabled=state.mode!=='full';
+}
+
+function updateIndicators(){
+    document.getElementById('voltageValue').textContent=state.voltage.toFixed(1)+' V';
+    document.getElementById('currentValue').textContent=state.current.toFixed(1)+' mA';
+    document.getElementById('chargeValue').textContent=(state.chargeLevel*10).toFixed(0)+' μC';
+    document.getElementById('electronCount').textContent=state.electronsA+' / '+state.electronsB;
+    document.getElementById('chargePercent').textContent=Math.round(state.chargeLevel)+'%';
+    document.getElementById('progressFill').style.width=state.chargeLevel+'%';
+    document.getElementById('btnDischarge').disabled=state.mode!=='full';
+}
+
+function updateTimerDisplay(t,phase){
+    document.getElementById('timerValue').textContent=t+' s';
+    document.getElementById('timerPhase').textContent=phase;
+}
+
+function updateStateIndicator(mode){
+    const el=document.getElementById('stateIndicator');
+    el.className='state-badge';
+    const m={idle:['s-idle','ESPERA'],charging:['s-charging','⚡ CARGANDO'],
+             discharging:['s-discharging','🔌 DESCARGANDO'],full:['s-full','✓ COMPLETO'],paused:['s-paused','⏸ PAUSADO']};
+    el.classList.add(m[mode][0]); el.textContent=m[mode][1];
+}
+
+function updateExplanation(phase,t=''){
+    const title=document.getElementById('stepTitle');
+    const content=document.getElementById('stepContent');
+    const m={
+        idle:[   '▸ Estado inicial — neutro',
+            `Ambas placas tienen <span class="hl">${NEUTRAL} electrones</span> cada una — sistema en equilibrio. Al iniciar la carga, la batería forzará a los electrones a salir de la <span class="warn">Placa A</span> y acumularse en la <span class="hl">Placa B</span> viajando por el circuito externo. El dieléctrico <strong>nunca es cruzado</strong> por electrones. Podés <span class="hl">pausar</span> en cualquier momento para observar el estado.`],
+
+        charging:['⚡ FASE DE CARGA — transferencia A → B',
+            `Los electrones <strong>salen de la Placa A</strong> (pierde e⁻ → queda <span class="warn">positiva</span>) y viajan: <span class="hl">Placa A</span> → cable superior → batería (polo −) → cable inferior → <strong>R</strong> → cable derecho → <span class="hl">Placa B</span> (acumula e⁻ → queda <span class="hl">negativa</span>). Observá el contador "e⁻ A / B": A baja, B sube. La corriente comienza máxima y decae exponencialmente. Pausá para ver el estado en detalle.`],
+
+        full:[   '✅ CARGA COMPLETA',
+            `<span class="ok">Placa A: ${NEUTRAL-MAX_TX} e⁻ — Placa B: ${NEUTRAL+MAX_TX} e⁻.</span> La nube de electrones en B genera un campo tan fuerte que repele a los nuevos: la corriente cae a cero. Voltaje = 12V. ⏱️ Tiempo: <strong>${t}s</strong>. Iniciá la descarga para ver el proceso inverso.`],
+
+        discharging:['🔌 FASE DE DESCARGA — transferencia B → A',
+            `Ahora los electrones acumulados en la <span class="warn">Placa B</span> fluyen de vuelta: <span class="warn">Placa B</span> → cable superior → esquina derecha → <strong>R</strong> (disipa energía como calor) → cable izquierdo → <span class="hl">Placa A</span>. Las placas se equilibran gradualmente hasta volver a <span class="hl">${NEUTRAL} e⁻</span> cada una. Podés pausar para comparar.`],
+
+        empty:[  '♻️ EQUILIBRIO RESTAURADO',
+            `<span class="ok">¡Ambas placas vuelven a ${NEUTRAL} electrones!</span> Voltaje = 0, campo eléctrico = 0, corriente = 0. ⏱️ Tiempo de descarga: <strong>${t}s</strong>. El condensador almacenó energía como separación de cargas y la liberó disipándola en la resistencia R.`],
+    };
+    title.textContent=m[phase][0]; content.innerHTML=m[phase][1];
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+window.onload=()=>{
+    drawScene();
+    updateExplanation('idle');
+    updateTimerDisplay('0.00','En espera...');
+    updateIndicators();
+};
+</script>
+</body>
+</html>
