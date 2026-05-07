@@ -157,8 +157,8 @@
         <div class="control-panel">
             <div class="panel-block">
                 <h3>Controles</h3>
-                <button class="btn btn-charge"    id="btnCharge"    onclick="startCharging()">▶ INICIAR CARGA</button>
-                <button class="btn btn-discharge" id="btnDischarge" onclick="startDischarging()" disabled>⬇ INICIAR DESCARGA</button>
+                <button class="btn btn-charge"    id="btnCharge"    onclick="startCharging()">⚡ CONECTAR BATERÍA</button>
+                <button class="btn btn-discharge" id="btnDischarge" onclick="startDischarging()" disabled>🔌 DESCONECTAR BATERÍA</button>
                 <button class="btn btn-pause"     id="btnPause"     onclick="togglePause()" disabled>⏸ PAUSAR</button>
                 <button class="btn btn-reset"                       onclick="resetSimulation()">↺ REINICIAR</button>
             </div>
@@ -218,7 +218,7 @@ window.addEventListener('resize', () => { resizeCanvas(); if (!animId) drawScene
 //  CONSTANTS & STATE
 // ═══════════════════════════════════════════
 const NEUTRAL = 28;   // electrons per plate at rest
-const MAX_TX  = 28;   // max electrons transferred (A→B)
+const MAX_TX  = 10;   // max electrons transferred (A→B) — realistic partial transfer
 
 let state = {
     mode: 'idle',       // idle | charging | discharging | full | paused
@@ -236,58 +236,68 @@ let animId = null, paused = false;
 let wireElectrons = [];  // particles on wires
 
 // ═══════════════════════════════════════════
-//  LAYOUT
+//  LAYOUT  — single series loop RC circuit
+//  Plate A (top, horizontal) — left end connects to left rail
+//  Plate B (bottom, horizontal) — right end connects to right rail
+//  Battery on left rail (top segment)
+//  Resistor on bottom rail
 // ═══════════════════════════════════════════
 function getDim() {
     const W = canvas.offsetWidth, H = canvas.offsetHeight;
-    const left = 95, right = W - 50, top = 70, bottom = H - 60;
+    const left = 90, right = W - 60, top = 65, bottom = H - 55;
     const cx = W/2, cy = H/2;
 
-    const plateH = (bottom - top) * 0.54;
-    const plateW = 16, gap = 64;
-    const capAx  = cx - gap/2 - plateW;
-    const capBx  = cx + gap/2;
-    const capTop = cy - plateH/2;
-    const capBot = cy + plateH/2;
-    const capAMid = capAx + plateW/2;
-    const capBMid = capBx + plateW/2;
+    // Horizontal plates, centered
+    const plateW = (right - left) * 0.42;
+    const plateH = 14;
+    const gap    = 58;   // dielectric gap between plates
 
-    const resX = cx + (right - cx)*0.5 + 10;
-    const resY = bottom;
+    const capAy    = cy - gap/2 - plateH;   // top edge of plate A
+    const capBy    = cy + gap/2;            // top edge of plate B
+    const capLeft  = cx - plateW/2;
+    const capRight = cx + plateW/2;
+    const capCx    = cx;
+
+    // Resistor: on the bottom rail, right-of-center
+    const resX = cx;
+    const resY = capBy + plateH + (bottom - capBy - plateH) * 0.5;
 
     return { W, H, cx, cy, left, right, top, bottom,
-             capAx, capBx, capTop, capBot, plateH, plateW, gap,
-             capAMid, capBMid, resX, resY };
+             plateW, plateH, gap,
+             capAy, capBy, capLeft, capRight, capCx,
+             resX, resY };
 }
 
 // ═══════════════════════════════════════════
-//  WIRE PATHS
-//  CHARGING:    Plate A top → (exit A) → top rail left → left side (batt) → bottom → resistor → right side → top rail right → Plate B top (enter B)
-//  DISCHARGING: Plate B top → (exit B) → top rail right → right side → resistor → bottom → left side (batt) → top rail left → Plate A top (enter A)
+//  WIRE PATHS  (horizontal plates)
+//  Plate A (top) connects on left end → left rail → battery → bottom rail → resistor → right rail → right end of Plate B (bottom)
+//  CHARGING:    exit left of Plate A → left rail → battery (−) → bottom rail → R → right rail → enter right of Plate B
+//  DISCHARGING: exit right of Plate B → right rail → R → bottom rail → left rail → battery (+) → enter left of Plate A
 // ═══════════════════════════════════════════
 function getPaths(d) {
-    const { left, right, top, bottom, capAMid, capBMid, capTop } = d;
+    const { left, top, bottom, capAy, capBy, plateH, cx } = d;
+    const s2x = left - 45;  // S2 branch x position (same as drawBattery)
 
+    // CHARGING: electrons travel through battery branch (left rail)
+    // Plate A top → up → top-left → down left rail (battery+S1) → bottom → R → Plate B bottom
     const chargePath = [
-        [capAMid, capTop],       // EXIT plate A
-        [capAMid, top],
-        [left,    top],
-        [left,    bottom],       // through battery zone
-        [right,   bottom],       // through resistor
-        [right,   top],
-        [capBMid, top],
-        [capBMid, capTop],       // ENTER plate B
+        [cx,   capAy],           // exit plate A (top center)
+        [cx,   top],             // up terminal A
+        [left, top],             // top-left corner
+        [left, bottom],          // down left rail (battery S1 closed)
+        [cx,   bottom],          // bottom rail to center
+        [cx,   capBy + plateH],  // into plate B (through R)
     ];
 
+    // DISCHARGING: electrons travel through S2 branch (bypasses battery)
+    // Plate B bottom → up R → bottom rail → S2 branch (left side) → back to top → Plate A top
     const dischargePath = [
-        [capBMid, capTop],       // EXIT plate B
-        [capBMid, top],
-        [right,   top],
-        [right,   bottom],       // through resistor
-        [left,    bottom],
-        [left,    top],          // through battery zone
-        [capAMid, top],
-        [capAMid, capTop],       // ENTER plate A
+        [cx,   capBy + plateH],  // exit plate B (bottom center, through R)
+        [cx,   bottom],          // down to bottom rail
+        [s2x,  bottom],          // bottom rail → S2 branch bottom node
+        [s2x,  top],             // up through S2 (closed) — bypasses battery
+        [cx,   top],             // top rail to center
+        [cx,   capAy],           // down terminal A into plate A
     ];
 
     return { chargePath, dischargePath };
@@ -344,202 +354,333 @@ function drawElectron(x,y,r,alpha=1) {
 }
 
 // ═══════════════════════════════════════════
-//  DRAW WIRES
+//  DRAW WIRES  — single series loop
+//
+//  [left,top] ─────────────────────── [right,top]
+//      |                                    |
+//  left rail                           right rail
+//  (BATTERY)                                |
+//      |                               [right,bY]──── Plate B right
+//  [left,aY] ──── Plate A left              
+//      |
+//  [left,bottom] ──── R ──────────── [right,bottom]
+//
 // ═══════════════════════════════════════════
 function drawWires(d) {
-    const {left,right,top,bottom,capAMid,capBMid,capTop} = d;
+    // Single series loop — NO branches:
+    //
+    //        [cx, top]
+    //            |  ← terminal A (vertical, sube desde placa A)
+    //       ══ PLACA A ══
+    //       (dieléctrico)
+    //       ══ PLACA B ══
+    //            |  ← R en serie (justo debajo de placa B)
+    //        [cx, capBy+pH+resGap]  ← resistor aquí
+    //            |
+    //        [cx, bottom]
+    //            |
+    //   [left,bottom]────────────────[right,bottom]
+    //        |                              |
+    //   [left,top]──────────────────[right,top]
+    //        |
+    //   BATERÍA en left rail (left,top → left,bottom)... 
+    //
+    // Corrección final — lazo puro:
+    // cx,capAy → cx,top → left,top → left,bottom → cx,bottom → cx,capBy+pH
+    // (batería en left rail, R en terminal B justo debajo de placa B)
+
+    const { left, right, top, bottom, capAy, capBy, plateH, cx } = d;
     ctx.lineCap='round'; ctx.lineJoin='round';
 
     const base   = '#263555';
-    const active = state.mode==='charging' ? '#005570' :
+    const active = state.mode==='charging'    ? '#005570' :
                    state.mode==='discharging' ? '#551520' : base;
+    const col    = (state.mode==='charging' || state.mode==='discharging') ? active : base;
 
-    function seg(pts,col,w=3.5) {
-        ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
-        for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
-        ctx.strokeStyle=col; ctx.lineWidth=w; ctx.stroke();
-    }
+    ctx.strokeStyle = col; ctx.lineWidth = 3.5;
 
-    const isAct = state.mode==='charging'||state.mode==='discharging';
-    seg([[capAMid,capTop],[capAMid,top],[left,top]],  isAct?active:base);
-    seg([[left,top],[left,bottom]],                   isAct?active:base);
-    seg([[left,bottom],[right,bottom]],               isAct?active:base);
-    seg([[right,bottom],[right,top]],                 isAct?active:base);
-    seg([[right,top],[capBMid,top],[capBMid,capTop]], isAct?active:base);
+    // El lazo completo como una sola polilínea:
+    // terminal A (sube) → top rail izq → left rail (batería) → bottom rail → terminal B (sube desde abajo)
+    ctx.beginPath();
+    ctx.moveTo(cx,    capAy);       // top center of plate A
+    ctx.lineTo(cx,    top);         // terminal A sube al top rail
+    ctx.lineTo(left,  top);         // top rail → esquina top-left
+    ctx.lineTo(left,  bottom);      // left rail hacia abajo (BATERÍA aquí)
+    ctx.lineTo(cx,    bottom);      // bottom rail → centro
+    ctx.lineTo(cx,    capBy + plateH); // terminal B baja a placa B (R está en este tramo)
+    ctx.stroke();
 
-    // Corner junction dots
-    [[left,top],[right,top],[right,bottom],[left,bottom]].forEach(([x,y])=>{
-        ctx.fillStyle='#1e2d48';
+    // Junction dots solo en las esquinas reales
+    [[cx,top],[left,top],[left,bottom],[cx,bottom]].forEach(([x,y])=>{
+        ctx.fillStyle='#2a3d5a';
         ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill();
     });
 }
 
 // ═══════════════════════════════════════════
-//  DRAW BATTERY
+//  DRAW BATTERY  (on left rail, between plate A and top corner)
 // ═══════════════════════════════════════════
 function drawBattery(d) {
-    const x=d.left, y=d.cy, bw=22, bh=60;
+    // Battery + S1 (series switch, above battery) + S2 (parallel switch, to the right)
+    // All on the LEFT RAIL
+    const x  = d.left;
+    const cy = (d.top + d.bottom) / 2;
+    const bw = 22, bh = 50;
 
+    // ── Battery body ─────────────────────────────────────
+    const battY = cy + 20;  // battery slightly below center to leave room for S1 above
     ctx.fillStyle='#111827'; ctx.strokeStyle='#2a3a55'; ctx.lineWidth=2;
-    roundRect(x-bw/2,y-bh/2,bw,bh,6); ctx.fill(); ctx.stroke();
+    roundRect(x-bw/2, battY-bh/2, bw, bh, 6); ctx.fill(); ctx.stroke();
 
-    // Terminal stubs blending into wires
-    ctx.strokeStyle='#2a3a55'; ctx.lineWidth=3.5;
-    ctx.beginPath(); ctx.moveTo(x,y-bh/2); ctx.lineTo(x,d.top);    ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x,y+bh/2); ctx.lineTo(x,d.bottom); ctx.stroke();
-
-    // + symbol
+    // + faces UP
     ctx.strokeStyle='#ff6b6b'; ctx.lineWidth=2.5;
     ctx.beginPath();
-    ctx.moveTo(x-7,y-17); ctx.lineTo(x+7,y-17);
-    ctx.moveTo(x,  y-24); ctx.lineTo(x,  y-10);
+    ctx.moveTo(x-7, battY-12); ctx.lineTo(x+7, battY-12);
+    ctx.moveTo(x,   battY-19); ctx.lineTo(x,   battY-5);
     ctx.stroke();
-    // − symbol
+    // − faces DOWN
     ctx.strokeStyle='#4ecdc4'; ctx.lineWidth=2.5;
-    ctx.beginPath(); ctx.moveTo(x-7,y+15); ctx.lineTo(x+7,y+15); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x-7, battY+13); ctx.lineTo(x+7, battY+13);
+    ctx.stroke();
 
-    ctx.font='600 10px Share Tech Mono,monospace'; ctx.textAlign='center';
-    ctx.fillStyle='#ff6b6b'; ctx.fillText('+',x+17,y-14);
-    ctx.fillStyle='#4ecdc4'; ctx.fillText('−',x+17,y+18);
-    ctx.fillStyle='#2a3a55';
-    ctx.fillText('12V',x,y+bh/2+16);
-    ctx.fillText('FUENTE',x,y-bh/2-12);
+    // Labels RIGHT of battery
+    ctx.textAlign='left';
+    ctx.font='700 11px Share Tech Mono,monospace';
+    ctx.fillStyle='#00d4ff'; ctx.fillText('FUENTE', x+bw/2+6, battY-20);
+    ctx.font='600 10px Share Tech Mono,monospace';
+    ctx.fillStyle='#ff6b6b'; ctx.fillText('(+)', x+bw/2+6, battY-5);
+    ctx.fillStyle='#4ecdc4'; ctx.fillText('(−)', x+bw/2+6, battY+16);
+    ctx.fillStyle='#3a5070'; ctx.fillText('12 V DC', x+bw/2+6, battY+30);
+    ctx.textAlign='center';
+
+    // ── S1 — interruptor en SERIE (encima de la batería, en el left rail) ────
+    // S1 is between left,top and top of battery
+    const s1Y = (d.top + battY - bh/2) / 2;  // midpoint of wire above battery
+    drawSwitch(x, s1Y, 'S1', state.mode === 'charging' || state.mode === 'full', 'series');
+
+    // ── S2 — interruptor en PARALELO (a la derecha de la batería) ────────────
+    // S2 bridges from the node above battery (left,s1Y area → actually left,top-ish)
+    // to the node below battery (left,bottom area)
+    // Draw it as a branch off the left rail, to the left side
+    const s2x   = x - 45;               // offset to the left
+    const s2top = d.top;                // connects top node of left rail
+    const s2bot = d.bottom;             // connects bottom node of left rail
+
+    // Branch wires: horizontal stubs from left rail to S2
+    ctx.strokeStyle = '#263555'; ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, s2top); ctx.lineTo(s2x, s2top);   // top stub
+    ctx.moveTo(x, s2bot); ctx.lineTo(s2x, s2bot);   // bottom stub
+    // vertical wire of S2 branch
+    ctx.moveTo(s2x, s2top); ctx.lineTo(s2x, s2bot);
+    ctx.stroke();
+
+    // Draw S2 at midpoint of that vertical branch
+    const s2midY = (s2top + s2bot) / 2;
+    // S2 is CLOSED when idle (no battery), OPEN when charging/full
+    const s2closed = (state.mode === 'idle' || state.mode === 'discharging' || (state.mode === 'paused' && state.prevMode === 'discharging'));
+    drawSwitch(s2x, s2midY, 'S2', s2closed, 'parallel');
+}
+
+function drawSwitch(x, y, label, closed, type) {
+    const isS1 = type === 'series';
+    // Color: green = closed, red = open
+    const col    = closed ? '#51cf66' : '#ff6b6b';
+    const colDim = closed ? 'rgba(81,207,102,0.3)' : 'rgba(255,107,107,0.3)';
+
+    // Glow
+    ctx.shadowColor = col; ctx.shadowBlur = closed ? 12 : 6;
+
+    // Switch body: two terminals + rotating arm
+    const armLen = 18;
+    ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+
+    // Bottom terminal dot
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(x, y + armLen/2, 3, 0, Math.PI*2); ctx.fill();
+    // Top terminal dot
+    ctx.beginPath(); ctx.arc(x, y - armLen/2, 3, 0, Math.PI*2); ctx.fill();
+
+    // Arm
+    ctx.beginPath();
+    ctx.moveTo(x, y + armLen/2);
+    if (closed) {
+        // Arm vertical — switch closed
+        ctx.lineTo(x, y - armLen/2);
+    } else {
+        // Arm angled — switch open
+        ctx.lineTo(x + armLen * 0.8, y - armLen/2 + 4);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Label
+    ctx.textAlign = 'left';
+    ctx.font = '700 10px Share Tech Mono,monospace';
+    ctx.fillStyle = col;
+    ctx.fillText(label, x + 8, y - 2);
+    const status = closed ? 'CERRADO' : 'ABIERTO';
+    ctx.font = '600 9px Share Tech Mono,monospace';
+    ctx.fillStyle = colDim.replace('0.3','0.8');
+    ctx.fillText(status, x + 8, y + 10);
+    ctx.textAlign = 'center';
 }
 
 // ═══════════════════════════════════════════
-//  DRAW RESISTOR
+//  DRAW RESISTOR  (on bottom rail)
 // ═══════════════════════════════════════════
 function drawResistor(d) {
-    const x=d.resX, y=d.resY;
-    const isAct=(state.mode==='charging'||state.mode==='discharging')&&state.current>.3;
-    const col=isAct?(state.mode==='charging'?'#00d4ff':'#ff6b6b'):'#ffd93d';
+    // Resistor is on the vertical terminal B wire, drawn vertically
+    const x = d.resX, y = d.resY;
+    const isAct = (state.mode==='charging' || state.mode==='discharging') && state.current > 0.3;
+    const col = isAct ? (state.mode==='charging' ? '#00d4ff' : '#ff6b6b') : '#ffd93d';
 
-    ctx.shadowColor=col; ctx.shadowBlur=isAct?18:6;
-    const segs=8, sw=9, sx=x-segs*sw/2;
-    ctx.strokeStyle=col; ctx.lineWidth=2.5; ctx.lineCap='round';
+    ctx.shadowColor = col; ctx.shadowBlur = isAct ? 18 : 6;
+    ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+
+    // Vertical zigzag
+    const segs = 6, sh = 8, sy = y - segs * sh / 2;
     ctx.beginPath();
-    ctx.moveTo(sx-14,y); ctx.lineTo(sx,y);
-    for(let i=0;i<segs;i++){
-        ctx.lineTo(sx+i*sw+sw/2, y+(i%2===0?-12:12));
-        ctx.lineTo(sx+(i+1)*sw,  y);
+    ctx.moveTo(x, sy - 12); ctx.lineTo(x, sy);
+    for (let i = 0; i < segs; i++) {
+        ctx.lineTo(x + (i % 2 === 0 ? 12 : -12), sy + i * sh + sh / 2);
+        ctx.lineTo(x, sy + (i + 1) * sh);
     }
-    ctx.lineTo(sx+segs*sw+14,y);
+    ctx.lineTo(x, sy + segs * sh + 12);
     ctx.stroke();
-    ctx.shadowBlur=0; ctx.lineCap='butt';
+    ctx.shadowBlur = 0; ctx.lineCap = 'butt';
 
-    ctx.font='700 12px Share Tech Mono,monospace'; ctx.textAlign='center';
-    ctx.fillStyle=col; ctx.fillText('R',x,y-17);
-    ctx.font='600 10px Rajdhani,sans-serif'; ctx.fillStyle='#3a5070';
-    ctx.fillText('1 kΩ',x,y+18);
-    if(isAct){
-        ctx.font='600 9px Share Tech Mono,monospace'; ctx.fillStyle=col;
-        ctx.fillText(state.mode==='charging'?'⚡ LIMITANDO':'⚡ DISIPANDO',x,y+30);
+    // Label to the RIGHT of the resistor
+    ctx.textAlign = 'left';
+    ctx.font = '700 12px Share Tech Mono,monospace';
+    ctx.fillStyle = col;
+    ctx.fillText('R = 1 kΩ', x + 18, y);
+    if (isAct) {
+        ctx.font = '600 9px Share Tech Mono,monospace';
+        ctx.fillText(state.mode === 'charging' ? '⚡ LIMITANDO' : '⚡ DISIPANDO', x + 18, y + 14);
     }
+    ctx.textAlign = 'center';
 }
 
 // ═══════════════════════════════════════════
-//  DRAW CAPACITOR PLATES
+//  DRAW CAPACITOR PLATES  (horizontal)
+//  Plate A = top horizontal bar
+//  Plate B = bottom horizontal bar
+//  Dielectric = vertical space between them
 // ═══════════════════════════════════════════
 function drawCapacitorPlates(d) {
-    const {capAx,capBx,capTop,capBot,plateW,gap,capAMid,capBMid} = d;
-    const h=capBot-capTop, cl=state.chargeLevel/100;
+    const { capLeft, capRight, capAy, capBy, plateW, plateH, gap, capCx, cx, cy } = d;
+    const cl = state.chargeLevel / 100;
 
-    // Plate A → loses electrons → gets more red/positive
+    // ── Plate A (top) — loses electrons → goes positive (redder) ──
     const rA=Math.floor(60+cl*195), gA=Math.floor(90-cl*30), bA=Math.floor(140-cl*80);
     ctx.fillStyle=`rgb(${rA},${gA},${bA})`;
-    ctx.shadowColor=cl>.05?'rgba(255,107,107,.45)':'transparent';
+    ctx.shadowColor=cl>.05?'rgba(255,107,107,.5)':'transparent';
     ctx.shadowBlur=cl>.05?16:0;
-    roundRect(capAx,capTop,plateW,h,4); ctx.fill();
+    roundRect(capLeft, capAy, plateW, plateH, 4); ctx.fill();
     ctx.shadowBlur=0;
 
-    // Plate B → gains electrons → gets more teal/negative
+    // ── Plate B (bottom) — gains electrons → goes negative (teal) ──
     const rB=Math.floor(30-cl*10), gB=Math.floor(140+cl*65), bB=Math.floor(170+cl*40);
     ctx.fillStyle=`rgb(${rB},${gB},${bB})`;
-    ctx.shadowColor=cl>.05?'rgba(78,205,196,.45)':'transparent';
+    ctx.shadowColor=cl>.05?'rgba(78,205,196,.5)':'transparent';
     ctx.shadowBlur=cl>.05?16:0;
-    roundRect(capBx,capTop,plateW,h,4); ctx.fill();
+    roundRect(capLeft, capBy, plateW, plateH, 4); ctx.fill();
     ctx.shadowBlur=0;
 
-    // Dielectric
-    ctx.fillStyle='rgba(123,44,191,.06)';
-    ctx.fillRect(capAx+plateW,capTop,gap-plateW,h);
+    // ── Dielectric (space between plates) ──
+    ctx.fillStyle='rgba(123,44,191,.07)';
+    ctx.fillRect(capLeft, capAy+plateH, plateW, gap-plateH);
 
-    // Electric field lines
-    if(cl>.05){
-        const nL=Math.max(2,Math.floor(cl*8)), sp=h/(nL+1);
+    // ── Electric field lines (vertical, A→B) ──
+    if (cl > 0.05) {
+        const nL = Math.max(2, Math.floor(cl*8));
+        const spX = plateW / (nL+1);
         ctx.strokeStyle=`rgba(0,212,255,${cl*.42})`;
-        ctx.lineWidth=1+cl*1.5; ctx.setLineDash([4,6]);
-        for(let i=1;i<=nL;i++){
-            const ly=capTop+sp*i;
-            ctx.beginPath(); ctx.moveTo(capAx+plateW+4,ly); ctx.lineTo(capBx-4,ly); ctx.stroke();
+        ctx.lineWidth=1+cl*1.5; ctx.setLineDash([3,5]);
+        for (let i=1; i<=nL; i++) {
+            const lx = capLeft + spX*i;
+            ctx.beginPath();
+            ctx.moveTo(lx, capAy+plateH+3);
+            ctx.lineTo(lx, capBy-3);
+            ctx.stroke();
+            // arrowhead pointing down (E field A→B, conventional + to −)
             ctx.setLineDash([]);
-            const aw=5+cl*5;
+            const aw = 4+cl*4;
             ctx.fillStyle=`rgba(0,212,255,${cl*.65})`;
             ctx.beginPath();
-            ctx.moveTo(capBx-4,ly); ctx.lineTo(capBx-4-aw,ly-aw/2); ctx.lineTo(capBx-4-aw,ly+aw/2);
+            ctx.moveTo(lx, capBy-3);
+            ctx.lineTo(lx-aw/2, capBy-3-aw);
+            ctx.lineTo(lx+aw/2, capBy-3-aw);
             ctx.closePath(); ctx.fill();
-            ctx.setLineDash([4,6]);
+            ctx.setLineDash([3,5]);
         }
         ctx.setLineDash([]);
     }
 
-    // Labels
+    // ── Labels ──
     ctx.font='700 11px Share Tech Mono,monospace'; ctx.textAlign='center';
-    ctx.fillStyle=cl>.08?'#ff9999':'#3a5070'; ctx.fillText('PLACA A',capAMid,capTop-20);
-    ctx.fillStyle=cl>.08?'#4ecdc4':'#3a5070'; ctx.fillText('PLACA B',capBMid,capTop-20);
-    if(cl>.05){
+    // Plate A label: above the plate
+    ctx.fillStyle=cl>.08?'#ff9999':'#3a5070';
+    ctx.fillText('PLACA  A', capCx, capAy-10);
+    // Plate B label: below the plate
+    ctx.fillStyle=cl>.08?'#4ecdc4':'#3a5070';
+    ctx.fillText('PLACA  B', capCx, capBy+plateH+16);
+
+    // +/− charge signs
+    if (cl > 0.05) {
         ctx.font='700 14px Arial';
-        ctx.fillStyle=`rgba(255,120,80,${cl})`;  ctx.fillText('+',capAMid,capBot+18);
-        ctx.fillStyle=`rgba(78,205,196,${cl})`; ctx.fillText('−',capBMid,capBot+18);
+        ctx.fillStyle=`rgba(255,120,80,${cl})`;
+        ctx.fillText('(+)', capLeft-22, capAy+plateH/2+5);
+        ctx.fillStyle=`rgba(78,205,196,${cl})`;
+        ctx.fillText('(−)', capLeft-22, capBy+plateH/2+5);
     }
 
-    // Rotated label
-    ctx.save();
-    ctx.font='700 10px Share Tech Mono,monospace'; ctx.fillStyle='#1e2d40';
-    ctx.translate(d.cx,d.cy); ctx.rotate(-Math.PI/2);
-    ctx.fillText('CONDENSADOR  C',0,0); ctx.restore();
+    // Capacitor label: centered between plates
+    ctx.font='700 10px Share Tech Mono,monospace';
+    ctx.fillStyle='#1e2d40';
+    ctx.fillText('CONDENSADOR  C', capCx, capAy+plateH+gap/2+4);
 }
 
 // ═══════════════════════════════════════════
-//  DRAW ELECTRONS ON PLATES
-//  Both plates always show their current count.
-//  Plate A: electrons drawn on right side of plate (inner face).
-//  Plate B: electrons drawn on left side of plate (inner face).
+//  DRAW ELECTRONS ON PLATES  (horizontal layout)
+//  Plate A (top bar): electrons spread across its width
+//  Plate B (bottom bar): electrons spread across its width
 // ═══════════════════════════════════════════
 function drawPlateElectrons(d) {
-    const {capAx,capBx,capTop,capBot,plateW} = d;
-    const h=capBot-capTop;
+    const { capLeft, capRight, capAy, capBy, plateW, plateH } = d;
+    const eMid = plateH / 2;
 
-    function grid(startX, count, rightAlign) {
-        const cols=2, padY=12;
-        const spX=(plateW-4)/Math.max(1,cols-1);
-        const rows=Math.ceil(count/cols);
-        const spY=Math.min(14,(h-padY*2)/Math.max(1,rows-1));
-        for(let i=0;i<count;i++){
-            const col=rightAlign ? (cols-1-(i%cols)) : (i%cols);
-            const row=Math.floor(i/cols);
-            const ex=startX+2+col*spX;
-            const ey=capTop+padY+row*spY;
-            if(ey<capBot-5) drawElectron(ex,ey,4.5);
+    function rowOfElectrons(y, count, color) {
+        if (count <= 0) return;
+        const maxPerRow = Math.floor(plateW / 16);
+        const spacing = plateW / (Math.min(count, maxPerRow) + 1);
+        for (let i = 0; i < Math.min(count, maxPerRow * 2); i++) {
+            const row = Math.floor(i / maxPerRow);
+            const col = i % maxPerRow;
+            const ex = capLeft + spacing * (col + 1);
+            const ey = y + eMid + (row === 0 ? 0 : 0); // single row fits fine in 14px
+            if (ex < capRight - 4) drawElectron(ex, ey, 4.5);
         }
     }
 
-    // Plate A electrons (placed on left/outer side since inner face gets depleted)
-    grid(capAx, state.electronsA, false);
+    // Plate A — shows electronsA (decreases during charging)
+    rowOfElectrons(capAy, state.electronsA, '#ffd93d');
 
-    // Plate B electrons (placed starting from left edge of plate B)
-    grid(capBx, state.electronsB, false);
+    // Plate B — shows electronsB (increases during charging)
+    rowOfElectrons(capBy, state.electronsB, '#ffd93d');
 
-    // Show + deficit markers on Plate A when it's lost electrons
+    // Deficit markers (+) on plate A inner face (bottom edge) when charging
     const deficit = NEUTRAL - state.electronsA;
-    if(deficit>0){
-        ctx.font='bold 12px Arial'; ctx.textAlign='center';
-        ctx.fillStyle=`rgba(255,140,80,${Math.min(1,deficit/NEUTRAL*2)})`;
-        for(let i=0;i<Math.min(deficit,12);i++){
-            const col=i%2, row=Math.floor(i/2);
-            const ex=capAx+3+col*(plateW-6);
-            const ey=capTop+12+row*14;
-            if(ey<capBot-5) ctx.fillText('+',ex,ey);
+    if (deficit > 0) {
+        ctx.font = 'bold 11px Arial'; ctx.textAlign = 'center';
+        ctx.fillStyle = `rgba(255,140,80,${Math.min(1, deficit / MAX_TX)})`;
+        const spacing = plateW / (deficit + 1);
+        for (let i = 0; i < deficit; i++) {
+            const px = capLeft + spacing * (i + 1);
+            if (px < capRight - 4) ctx.fillText('+', px, capAy + plateH + 12);
         }
     }
 }
@@ -763,13 +904,13 @@ function updateExplanation(phase,t=''){
             `Los electrones <strong>salen de la Placa A</strong> (pierde e⁻ → queda <span class="warn">positiva</span>) y viajan: <span class="hl">Placa A</span> → cable superior → batería (polo −) → cable inferior → <strong>R</strong> → cable derecho → <span class="hl">Placa B</span> (acumula e⁻ → queda <span class="hl">negativa</span>). Observá el contador "e⁻ A / B": A baja, B sube. La corriente comienza máxima y decae exponencialmente. Pausá para ver el estado en detalle.`],
 
         full:[   '✅ CARGA COMPLETA',
-            `<span class="ok">Placa A: ${NEUTRAL-MAX_TX} e⁻ — Placa B: ${NEUTRAL+MAX_TX} e⁻.</span> La nube de electrones en B genera un campo tan fuerte que repele a los nuevos: la corriente cae a cero. Voltaje = 12V. ⏱️ Tiempo: <strong>${t}s</strong>. Iniciá la descarga para ver el proceso inverso.`],
+            `<span class="ok">Placa A: ${NEUTRAL-MAX_TX} e⁻ — Placa B: ${NEUTRAL+MAX_TX} e⁻.</span> Se transfirieron ${MAX_TX} electrones de A hacia B. La diferencia de carga genera un campo que se opone a la batería: la corriente cae a cero. Voltaje = 12V. ⏱️ Tiempo: <strong>${t}s</strong>. Iniciá la descarga para ver el proceso inverso.`],
 
         discharging:['🔌 FASE DE DESCARGA — transferencia B → A',
             `Ahora los electrones acumulados en la <span class="warn">Placa B</span> fluyen de vuelta: <span class="warn">Placa B</span> → cable superior → esquina derecha → <strong>R</strong> (disipa energía como calor) → cable izquierdo → <span class="hl">Placa A</span>. Las placas se equilibran gradualmente hasta volver a <span class="hl">${NEUTRAL} e⁻</span> cada una. Podés pausar para comparar.`],
 
         empty:[  '♻️ EQUILIBRIO RESTAURADO',
-            `<span class="ok">¡Ambas placas vuelven a ${NEUTRAL} electrones!</span> Voltaje = 0, campo eléctrico = 0, corriente = 0. ⏱️ Tiempo de descarga: <strong>${t}s</strong>. El condensador almacenó energía como separación de cargas y la liberó disipándola en la resistencia R.`],
+            `<span class="ok">¡Ambas placas vuelven a ${NEUTRAL} electrones!</span> Los ${MAX_TX} electrones transferidos regresaron de B a A. Voltaje = 0, campo eléctrico = 0. ⏱️ Tiempo de descarga: <strong>${t}s</strong>. El condensador almacenó energía como separación de cargas y la liberó disipándola en la resistencia R.`],
     };
     title.textContent=m[phase][0]; content.innerHTML=m[phase][1];
 }
