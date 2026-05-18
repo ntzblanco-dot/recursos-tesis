@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fórmula Real del Capacitor</title>
+  <style>
+    /* ── TEMA OSCURO ── */
+    :root {
+      --bg-primary:    #0f1117;
+      --bg-secondary:  #1a1d27;
+      --bg-tertiary:   #222536;
+      --text-primary:  #e8eaf0;
+      --text-secondary:#9a9db0;
+      --border:        #2e3146;
+      --accent-info-bg:#1a2540;
+      --accent-info:   #5b9ef5;
+      --accent-info-text: #5b9ef5;
+      --success:       #4ecba0;
+      --danger:        #f07070;
+      --wire:          #6a6e88;
+      --font: system-ui, -apple-system, sans-serif;
+      --mono: 'Courier New', monospace;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font);
+      min-height: 100vh;
+    }
+
+    .wrap { padding: 1.2rem 1rem; max-width: 680px; margin: 0 auto; }
+
+    h1 {
+      font-size: 18px; font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 1.2rem;
+      padding-bottom: 10px;
+      border-bottom: 0.5px solid var(--border);
+    }
+
+    /* Fórmula hero */
+    .formula-hero {
+      background: var(--bg-secondary);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      margin-bottom: 1.2rem;
+      text-align: center;
+    }
+    .f-big { font-size: 22px; font-weight: 600; letter-spacing: 1px; color: var(--text-primary); }
+    .f-units {
+      font-size: 11px; color: var(--text-secondary);
+      margin-top: 8px; display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;
+    }
+    .fu { text-align: center; }
+    .fu b { display: block; font-size: 12px; }
+
+    /* Sliders grid */
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+    .scard {
+      background: var(--bg-secondary);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 11px 12px;
+    }
+    .scard-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 2px; }
+    .scard-val   { font-size: 15px; font-weight: 500; color: var(--text-primary); }
+    .scard-unit  { font-size: 10px; color: var(--text-secondary); }
+    input[type=range] { width: 100%; margin-top: 5px; accent-color: #5b9ef5; }
+
+    /* Epsilon card */
+    .eps-card {
+      background: var(--bg-secondary);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 11px 12px;
+      margin-bottom: 1rem;
+    }
+    .eps-top {
+      display: flex; justify-content: space-between;
+      align-items: baseline; margin-bottom: 4px; flex-wrap: wrap; gap: 4px;
+    }
+    .mat-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .mat-btn {
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      border: 0.5px solid var(--border);
+      font-size: 11px; cursor: pointer;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font);
+      transition: all .15s;
+    }
+    .mat-btn:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+    .mat-btn.active {
+      background: var(--accent-info-bg);
+      color: var(--accent-info);
+      border-color: var(--accent-info);
+    }
+
+    /* Cálculo */
+    .calc-box {
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      margin-bottom: 1rem;
+      background: var(--bg-secondary);
+    }
+    .calc-step { font-size: 12px; color: var(--text-secondary); font-family: var(--mono); margin-bottom: 4px; line-height: 1.7; }
+    .calc-step.hi { color: var(--text-primary); font-weight: 500; }
+    .divider { height: 0.5px; background: var(--border); margin: 8px 0; }
+
+    .result-row { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px; }
+    .result-label { font-size: 12px; color: var(--text-secondary); }
+    .result-f  { font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+    .result-uf { font-size: 26px; font-weight: 700; color: var(--success); }
+
+    .gauge-wrap  { margin: 10px 0 4px; }
+    .gauge-label { font-size: 10px; color: var(--text-secondary); display: flex; justify-content: space-between; margin-bottom: 3px; }
+    .gauge-track { background: var(--bg-tertiary); border-radius: 6px; height: 10px; overflow: hidden; }
+    .gauge-fill  { height: 10px; border-radius: 6px; background: linear-gradient(90deg, #3B8BD4, #1D9E75); transition: width .4s ease; }
+
+    .tip {
+      font-size: 11px; color: var(--text-secondary);
+      background: var(--bg-secondary);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px; line-height: 1.6; margin-bottom: 1rem;
+    }
+
+    /* Nota curiosa */
+    .nota {
+      border-radius: var(--radius-lg);
+      border: 0.5px solid var(--accent-info);
+      background: var(--accent-info-bg);
+      padding: 14px 16px;
+      margin-top: 0.5rem;
+    }
+    .nota-title  { font-size: 13px; font-weight: 600; color: var(--accent-info-text); margin-bottom: 10px; }
+    .nota-section{ margin-bottom: 12px; }
+    .nota-sub    { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+    .nota-text   { font-size: 11px; color: var(--text-secondary); line-height: 1.7; }
+    .nota-formula{
+      font-family: var(--mono); font-size: 12px;
+      background: var(--bg-tertiary);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px; margin: 6px 0;
+      color: var(--text-primary);
+    }
+    .arrow-down { text-align: center; font-size: 14px; color: var(--text-secondary); margin: 4px 0; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⚡ Fórmula Real del Capacitor — C = ε · A / d</h1>
+
+  <!-- Fórmula hero -->
+  <div class="formula-hero">
+    <div class="f-big">C = <span style="color:#9F77DD">ε</span> · <span style="color:#3B8BD4">A</span> / <span style="color:#E24B4A">d</span></div>
+    <div class="f-units">
+      <div class="fu"><b style="color:#9F77DD">ε (F/m)</b>permitividad del material</div>
+      <div class="fu"><b style="color:#3B8BD4">A (m²)</b>área de las placas</div>
+      <div class="fu"><b style="color:#E24B4A">d (m)</b>distancia entre placas</div>
+      <div class="fu"><b style="color:#1D9E75">C → µF</b>capacitancia resultante</div>
+    </div>
+  </div>
+
+  <!-- Material dieléctrico -->
+  <div class="eps-card">
+    <div class="eps-top">
+      <div style="font-size:12px;color:#9a9db0"><span style="color:#9F77DD;font-weight:600">ε</span> — Material dieléctrico entre placas</div>
+      <div style="font-size:13px;font-weight:500;color:#e8eaf0" id="eps-val-show">8.854 × 10⁻¹² F/m</div>
+    </div>
+    <div style="font-size:11px;color:#9a9db0" id="eps-desc">Vacío / Aire — valor base ε₀</div>
+    <div class="mat-btns">
+      <button class="mat-btn active" onclick="setMat(this,1,'Vacío/Aire','8.854 × 10⁻¹² F/m')">Vacío/Aire (×1)</button>
+      <button class="mat-btn" onclick="setMat(this,2.1,'Teflón','18.6 × 10⁻¹² F/m')">Teflón (×2.1)</button>
+      <button class="mat-btn" onclick="setMat(this,4.5,'Vidrio','39.8 × 10⁻¹² F/m')">Vidrio (×4.5)</button>
+      <button class="mat-btn" onclick="setMat(this,7,'Mica','62.0 × 10⁻¹² F/m')">Mica (×7)</button>
+      <button class="mat-btn" onclick="setMat(this,80,'Agua destilada','708 × 10⁻¹² F/m')">Agua (×80)</button>
+      <button class="mat-btn" onclick="setMat(this,10000,'Cerámica BaTiO₃','88500 × 10⁻¹² F/m')">Cerámica (×10000)</button>
+    </div>
+  </div>
+
+  <!-- Sliders A y d -->
+  <div class="grid2">
+    <div class="scard">
+      <div class="scard-label"><span style="color:#3B8BD4;font-weight:600">A</span> — Área de placas</div>
+      <div class="scard-val"><span id="a-val">0.0100</span> <span class="scard-unit">m²</span></div>
+      <input type="range" min="1" max="100" value="10" step="1" oninput="calc()" id="sl-a">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#9a9db0;margin-top:2px"><span>0.001 m²</span><span>0.1 m²</span></div>
+    </div>
+    <div class="scard">
+      <div class="scard-label"><span style="color:#E24B4A;font-weight:600">d</span> — Distancia entre placas</div>
+      <div class="scard-val"><span id="d-val">1.00</span> <span class="scard-unit">mm</span></div>
+      <input type="range" min="1" max="100" value="10" step="1" oninput="calc()" id="sl-d">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#9a9db0;margin-top:2px"><span>0.1 mm</span><span>10 mm</span></div>
+    </div>
+  </div>
+
+  <!-- SVG capacitor visual -->
+  <svg width="100%" viewBox="0 0 500 110" style="margin-bottom:12px;display:block">
+    <line x1="30" y1="55" x2="500" y2="55" stroke="#6a6e88" stroke-width="1.5"/>
+    <rect id="plate-a" x="195" y="15" width="6" height="80" fill="#3B8BD4" rx="1"/>
+    <rect id="plate-b" x="220" y="15" width="6" height="80" fill="#3B8BD4" rx="1"/>
+    <rect id="diel" x="201" y="15" width="19" height="80" fill="#9F77DD" opacity="0.25" rx="0"/>
+    <text id="eps-lbl" x="213" y="58" text-anchor="middle" font-size="10" fill="#9F77DD" font-family="sans-serif">ε</text>
+    <line id="d-arr" x1="198" y1="102" x2="223" y2="102" stroke="#E24B4A" stroke-width="1.5"/>
+    <text id="d-lbl" x="211" y="110" text-anchor="middle" font-size="9" fill="#E24B4A" font-family="sans-serif">d</text>
+    <line id="a-arr-top" x1="185" y1="15" x2="185" y2="95" stroke="#3B8BD4" stroke-width="1.2" stroke-dasharray="2 2"/>
+    <text id="a-lbl" x="178" y="58" text-anchor="middle" font-size="9" fill="#3B8BD4" font-family="sans-serif">A</text>
+    <circle cx="470" cy="55" r="13" fill="none" stroke="#6a6e88" stroke-width="1"/>
+    <text x="470" y="59" text-anchor="middle" font-size="10" fill="#9a9db0" font-family="sans-serif">V</text>
+    <line x1="30"  y1="55" x2="30"  y2="90" stroke="#6a6e88" stroke-width="1.5"/>
+    <line x1="30"  y1="90" x2="470" y2="90" stroke="#6a6e88" stroke-width="1.5"/>
+    <line x1="470" y1="90" x2="470" y2="68" stroke="#6a6e88" stroke-width="1.5"/>
+  </svg>
+
+  <!-- Cálculo paso a paso -->
+  <div class="calc-box">
+    <div class="calc-step">Paso 1 — fórmula base:</div>
+    <div class="calc-step hi">C = ε · A / d</div>
+    <div class="calc-step" id="step2">C = ? · ? / ?</div>
+    <div class="calc-step hi" id="step3">C = ? F</div>
+    <div class="divider"></div>
+    <div class="result-row">
+      <div>
+        <div class="result-label">En Faradios:</div>
+        <div class="result-f" id="res-f">—</div>
+      </div>
+      <div style="text-align:right">
+        <div class="result-label">En microfaradios (F × 10⁶):</div>
+        <div class="result-uf" id="res-uf">— µF</div>
+      </div>
+    </div>
+    <div class="gauge-wrap">
+      <div class="gauge-label"><span>0 µF</span><span id="gauge-max-lbl">1 µF</span></div>
+      <div class="gauge-track"><div class="gauge-fill" id="gauge" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="tip" id="tip-box">Ajusta los sliders para ver cómo cambia C.</div>
+
+  <!-- NOTA CURIOSA -->
+  <div class="nota">
+    <div class="nota-title">🔍 Nota curiosa — ¿De dónde salen las fórmulas de serie y paralelo?</div>
+
+    <div class="nota-section">
+      <div class="nota-sub" style="color:#1D9E75">Paralelo → suma de áreas</div>
+      <div class="nota-text">
+        En paralelo, todos los capacitores comparten la misma distancia <strong>d</strong> y el mismo material <strong>ε</strong>. Solo cambia el área. Es como tener un solo capacitor con la suma de todas las placas:
+      </div>
+      <div class="nota-formula">C₁ = ε·A₁/d &nbsp;&nbsp; C₂ = ε·A₂/d</div>
+      <div class="nota-formula">C_total = ε·(A₁+A₂)/d = C₁ + C₂  ✅</div>
+      <div class="nota-text">Por eso la fórmula en paralelo es simplemente <strong>Cₜ = C₁ + C₂</strong>. Las áreas se suman directamente.</div>
+    </div>
+
+    <div class="nota-section">
+      <div class="nota-sub" style="color:#E24B4A">Serie → suma de distancias</div>
+      <div class="nota-text">
+        En serie, todos los capacitores comparten la misma área <strong>A</strong> y el mismo material <strong>ε</strong>. Solo cambia la distancia. Es como un solo capacitor con la distancia total acumulada:
+      </div>
+      <div class="nota-formula">C₁ = ε·A/d₁ &nbsp;&nbsp; C₂ = ε·A/d₂</div>
+      <div class="nota-formula">C_total = ε·A/(d₁+d₂)</div>
+      <div class="arrow-down">↓ si lo conviertes a forma de 1/C:</div>
+      <div class="nota-formula">1/Cₜ = (d₁+d₂)/(ε·A) = d₁/(ε·A) + d₂/(ε·A) = 1/C₁ + 1/C₂  ✅</div>
+      <div class="nota-text">Por eso la fórmula en serie es <strong>1/Cₜ = 1/C₁ + 1/C₂</strong>. Las distancias se suman en el denominador, lo que produce una C total siempre menor.</div>
+    </div>
+
+    <div style="font-size:11px;color:#5b9ef5;margin-top:4px">
+      💡 En ambos casos todo viene de la misma fórmula física <strong>C = ε·A/d</strong>. La conexión eléctrica simplemente determina qué variable se acumula: área en paralelo, distancia en serie.
+    </div>
+  </div>
+</div>
+
+<script>
+const EPS0 = 8.854e-12;
+let kr = 1;
+
+function setMat(btn, k, name, epsStr) {
+  document.querySelectorAll('.mat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  kr = k;
+  document.getElementById('eps-val-show').textContent = epsStr;
+  document.getElementById('eps-desc').textContent = name + (k === 1 ? ' — valor base ε₀' : ` — ε = ${k} × ε₀`);
+  document.getElementById('eps-lbl').textContent = k > 1 ? `ε×${k}` : 'ε₀';
+  calc();
+}
+
+function calc() {
+  const aSlider = +document.getElementById('sl-a').value;
+  const dSlider = +document.getElementById('sl-d').value;
+
+  const A = 0.001 + (aSlider - 1) * (0.099 / 99);
+  const d = 0.0001 + (dSlider - 1) * (0.0099 / 99);
+  const eps = kr * EPS0;
+
+  document.getElementById('a-val').textContent = A.toFixed(4);
+  document.getElementById('d-val').textContent = (d * 1000).toFixed(2);
+
+  // ÁREA: altura de las placas
+  const minH = 20, maxH = 90;
+  const plateH = Math.round(minH + (aSlider - 1) * (maxH - minH) / 99);
+  const plateY = 55 - plateH / 2;
+
+  document.getElementById('plate-a').setAttribute('y', plateY);
+  document.getElementById('plate-a').setAttribute('height', plateH);
+  document.getElementById('plate-b').setAttribute('y', plateY);
+  document.getElementById('plate-b').setAttribute('height', plateH);
+  document.getElementById('diel').setAttribute('y', plateY);
+  document.getElementById('diel').setAttribute('height', plateH);
+  document.getElementById('eps-lbl').setAttribute('y', plateY + plateH/2 + 4);
+  document.getElementById('a-arr-top').setAttribute('y1', plateY);
+  document.getElementById('a-arr-top').setAttribute('y2', plateY + plateH);
+  document.getElementById('a-lbl').setAttribute('y', plateY + plateH/2 + 4);
+
+  // DISTANCIA: separación entre placas
+  const minSep = 6, maxSep = 80;
+  const sepPx = Math.round(minSep + (dSlider - 1) * (maxSep - minSep) / 99);
+  const cx = 210;
+  const xA = cx - sepPx / 2;
+  const xB = cx + sepPx / 2 - 6;
+
+  document.getElementById('plate-a').setAttribute('x', xA);
+  document.getElementById('plate-b').setAttribute('x', xB);
+  document.getElementById('diel').setAttribute('x', xA + 6);
+  document.getElementById('diel').setAttribute('width', Math.max(1, xB - xA - 6));
+  document.getElementById('eps-lbl').setAttribute('x', xA + (xB - xA) / 2 + 3);
+
+  const dArrY = plateY + plateH + 8;
+  document.getElementById('d-arr').setAttribute('x1', xA);
+  document.getElementById('d-arr').setAttribute('x2', xB + 6);
+  document.getElementById('d-arr').setAttribute('y1', dArrY);
+  document.getElementById('d-arr').setAttribute('y2', dArrY);
+  document.getElementById('d-lbl').setAttribute('x', xA + (xB - xA) / 2 + 3);
+  document.getElementById('d-lbl').setAttribute('y', dArrY + 9);
+  document.getElementById('a-arr-top').setAttribute('x1', xA - 12);
+  document.getElementById('a-arr-top').setAttribute('x2', xA - 12);
+  document.getElementById('a-lbl').setAttribute('x', xA - 20);
+
+  // Cálculo
+  const C = eps * A / d;
+  const C_uF = C * 1e6;
+
+  document.getElementById('step2').textContent =
+    `C = ${eps.toExponential(3)} × ${A.toFixed(4)} / ${d.toExponential(3)}`;
+  document.getElementById('step3').textContent =
+    `C = ${C.toExponential(4)} F`;
+  document.getElementById('res-f').textContent = C.toExponential(4) + ' F';
+  document.getElementById('res-uf').textContent = C_uF.toFixed(5) + ' µF';
+
+  const maxUF = kr >= 1000 ? 10000 : kr >= 10 ? 100 : 1;
+  document.getElementById('gauge-max-lbl').textContent = maxUF + ' µF';
+  document.getElementById('gauge').style.width = Math.min(100, (C_uF / maxUF) * 100) + '%';
+
+  let tip = '';
+  if (kr === 1) tip = '💡 Con aire los valores son muy pequeños. Prueba <strong>Cerámica</strong> para ver cómo ε multiplica miles de veces.';
+  else if (C_uF < 0.0001) tip = '⚠️ Valor muy pequeño. Aumenta el área o reduce la distancia.';
+  else tip = `📐 <strong>${document.getElementById('eps-desc').textContent.split('—')[0].trim()}</strong>: ε es ${kr}× mayor que el aire → C es ${kr}× mayor también.`;
+  document.getElementById('tip-box').innerHTML = tip;
+}
+
+calc();
+</script>
+</body>
+</html>
