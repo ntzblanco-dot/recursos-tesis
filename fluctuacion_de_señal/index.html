@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌊 Simulador Filtro RC</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0f1d 0%, #1a2332 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container { max-width: 1700px; margin: 0 auto; padding: 14px; }
+
+        header {
+            text-align: center;
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(0,212,255,.1), rgba(123,44,191,.1));
+            border-radius: 14px;
+            margin-bottom: 13px;
+            border: 2px solid rgba(0,212,255,.25);
+        }
+
+        h1 {
+            font-size: 1.85em;
+            margin-bottom: 4px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle { font-size: .9em; color: #c8d6e8; }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 355px;
+            gap: 13px;
+            align-items: start;
+        }
+
+        /* ── canvas area ── */
+        .viz-area {
+            background: rgba(255,255,255,.03);
+            border-radius: 14px;
+            padding: 13px;
+            border: 2px solid rgba(0,212,255,.2);
+        }
+
+        .canvas-wrap {
+            width: 100%;
+            height: 390px;
+            background: radial-gradient(circle at 30% 40%, #151a28 0%, #0a0e18 100%);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: inset 0 0 45px rgba(0,0,0,.7);
+            border: 2px solid rgba(80,120,160,.2);
+        }
+
+        canvas { width:100%; height:100%; display:block; }
+
+        .legend-row {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 8px;
+            font-size: .8em;
+        }
+
+        .legend-item { display:flex; align-items:center; gap:5px; }
+        .legend-color { width:22px; height:3px; border-radius:2px; }
+
+        /* ── side panel ── */
+        .side-panel {
+            background: linear-gradient(180deg, rgba(123,44,191,.07), rgba(0,212,255,.07));
+            border-radius: 14px;
+            padding: 12px;
+            border: 2px solid rgba(123,44,191,.25);
+        }
+
+        .panel-title {
+            font-size: 1.05em;
+            margin-bottom: 10px;
+            color: #7b2cbf;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .params-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px;
+            margin-bottom: 9px;
+        }
+
+        .slider-box {
+            background: rgba(0,0,0,.28);
+            border-radius: 8px;
+            padding: 9px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+            font-size: .78em;
+        }
+
+        .slider-label span:first-child { color: #d4e0ed; font-weight: 600; }
+
+        .slider-val {
+            color: #ffd93d;
+            font-family: 'Courier New', monospace;
+            font-size: .86em;
+            font-weight: bold;
+            background: rgba(255,217,61,.12);
+            padding: 2px 6px;
+            border-radius: 4px;
+            min-width: 56px;
+            text-align: right;
+        }
+
+        input[type=range] {
+            width: 100%;
+            height: 5px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #333, #555);
+            outline: none;
+            -webkit-appearance: none;
+            margin: 4px 0;
+            cursor: pointer;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7b2cbf, #9b59d6);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(123,44,191,.45);
+        }
+
+        /* tau box */
+        .tau-box {
+            grid-column: span 2;
+            background: rgba(123,44,191,.12);
+            border: 1px solid rgba(123,44,191,.35);
+            border-radius: 8px;
+            padding: 8px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tau-label { font-size: .75em; color: #b8c5d6; }
+
+        .tau-value {
+            font-size: 1.25em;
+            font-weight: bold;
+            color: #ff6b6d;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* speed selector */
+        .speed-box {
+            grid-column: span 2;
+            background: rgba(0,212,255,.06);
+            border: 1px solid rgba(0,212,255,.2);
+            border-radius: 8px;
+            padding: 8px 10px;
+        }
+
+        .speed-box .slider-label { margin-bottom: 4px; }
+
+        /* buttons */
+        .btns-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px;
+            margin-bottom: 9px;
+        }
+
+        .btn {
+            padding: 10px 10px;
+            font-size: .83em;
+            font-weight: bold;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all .2s;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            color: #fff;
+            grid-column: span 2;
+            box-shadow: 0 3px 10px rgba(0,212,255,.35);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: #fff;
+            box-shadow: 0 3px 10px rgba(255,107,107,.35);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #888, #666);
+            color: #fff;
+            box-shadow: 0 3px 10px rgba(127,140,141,.35);
+        }
+
+        .btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.1); }
+        .btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; }
+
+        /* metrics */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            background: rgba(0,0,0,.28);
+            border-radius: 9px;
+            padding: 9px;
+        }
+
+        .metric-cell { text-align: center; padding: 4px; }
+        .metric-label { font-size: .7em; color: #99aabb; margin-bottom: 2px; }
+        .metric-val { font-family: 'Courier New', monospace; font-size: .95em; font-weight: bold; }
+        .val-in  { color: #ff6b6b; }
+        .val-out { color: #51cf66; }
+        .val-red { color: #ffd93d; }
+        .val-tau { color: #00d4ff; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: .72em;
+            font-weight: bold;
+            margin-left: 6px;
+        }
+
+        .status-idle { background: #6c757d; }
+        .status-run  { background: #00d4ff; color: #000; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+        /* explanation */
+        .expl-area {
+            background: linear-gradient(135deg, rgba(0,212,255,.06), rgba(123,44,191,.06));
+            border-radius: 14px;
+            padding: 13px 16px;
+            border: 2px solid rgba(0,212,255,.22);
+            margin-top: 13px;
+            grid-column: 1 / -1;
+        }
+
+        .expl-title { font-size: 1.05em; color: #00d4ff; margin-bottom: 6px; }
+
+        .expl-content { line-height: 1.55; font-size: .87em; color: #dde4ed; }
+
+        .highlight { color: #00d4ff; font-weight: 600; }
+        .warning   { color: #ff6b6b; font-weight: 600; }
+        .success   { color: #51cf66; font-weight: 600; }
+
+        .formula-inline {
+            background: rgba(0,0,0,.28);
+            padding: 6px 12px;
+            border-radius: 7px;
+            font-family: 'Courier New', monospace;
+            color: #ffd93d;
+            margin: 7px 0;
+            text-align: center;
+            font-size: .86em;
+            border-left: 3px solid #ffd93d;
+        }
+
+        @media (max-width: 1100px) {
+            .main-layout { grid-template-columns: 1fr; }
+            .canvas-wrap { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>🌊 Simulador Filtro RC — Reducción de Ripple</h1>
+        <p class="subtitle">Observa en tiempo real cómo el condensador suaviza las fluctuaciones de voltaje · Ajusta C y R y verás el efecto de τ</p>
+    </header>
+
+    <div class="main-layout">
+        <!-- ── CANVAS ── -->
+        <div class="viz-area">
+            <div class="canvas-wrap">
+                <canvas id="mainCanvas"></canvas>
+            </div>
+            <div class="legend-row">
+                <div class="legend-item">
+                    <div class="legend-color" style="background:#ff6b6b"></div>
+                    <span>Entrada (con ripple)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background:#51cf66"></div>
+                    <span>Salida (suavizada)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background:#ffd93d;height:2px;border-top:2px dashed #ffd93d;background:none;"></div>
+                    <span>DC promedio</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── PANEL ── -->
+        <div class="side-panel">
+            <h2 class="panel-title">
+                ⚙️ Parámetros
+                <span class="status-badge status-idle" id="statusBadge">ESPERA</span>
+            </h2>
+
+            <div class="params-grid">
+
+                <div class="slider-box">
+                    <div class="slider-label">
+                        <span>🔊 Frecuencia</span>
+                        <span class="slider-val" id="freqVal">60 Hz</span>
+                    </div>
+                    <input type="range" id="freqSl" min="5" max="200" value="60" step="5" oninput="updateParams()">
+                    <div style="display:flex;justify-content:space-between;font-size:9px;color:#555"><span>5Hz</span><span>200Hz</span></div>
+                </div>
+
+                <div class="slider-box">
+                    <div class="slider-label">
+                        <span>📈 Ripple</span>
+                        <span class="slider-val" id="ripVal">30%</span>
+                    </div>
+                    <input type="range" id="ripSl" min="5" max="60" value="30" step="1" oninput="updateParams()">
+                    <div style="display:flex;justify-content:space-between;font-size:9px;color:#555"><span>5%</span><span>60%</span></div>
+                </div>
+
+                <div class="slider-box">
+                    <div class="slider-label">
+                        <span>⚡ Voltaje DC</span>
+                        <span class="slider-val" id="dcVal">12.0 V</span>
+                    </div>
+                    <input type="range" id="dcSl" min="3" max="24" value="12" step="0.5" oninput="updateParams()">
+                    <div style="display:flex;justify-content:space-between;font-size:9px;color:#555"><span>3V</span><span>24V</span></div>
+                </div>
+
+                <div class="slider-box">
+                    <div class="slider-label">
+                        <span>🔌 Resistencia</span>
+                        <span class="slider-val" id="resVal">100 Ω</span>
+                    </div>
+                    <input type="range" id="resSl" min="10" max="2000" value="100" step="10" oninput="updateParams()">
+                    <div style="display:flex;justify-content:space-between;font-size:9px;color:#555"><span>10Ω</span><span>2kΩ</span></div>
+                </div>
+
+                <!-- Capacitance full-width with bigger slider -->
+                <div class="slider-box" style="grid-column:span 2;border:1px solid rgba(0,212,255,.25);background:rgba(0,212,255,.06);">
+                    <div class="slider-label">
+                        <span>🔋 Capacitancia C</span>
+                        <span class="slider-val" id="capVal">1000 μF</span>
+                    </div>
+                    <input type="range" id="capSl" min="10" max="10000" value="1000" step="10"
+                           oninput="updateParams()"
+                           style="height:8px;">
+                    <div style="display:flex;justify-content:space-between;font-size:9px;color:#555;margin-top:2px">
+                        <span>10μF — sin filtrado</span>
+                        <span>10000μF — muy suave</span>
+                    </div>
+                </div>
+
+                <!-- tau + speed together -->
+                <div class="tau-box">
+                    <div>
+                        <div class="tau-label">⏱ τ = R × C</div>
+                        <div class="tau-value" id="tauDisplay">100.0 ms</div>
+                    </div>
+                    <div style="text-align:right">
+                        <div class="tau-label">f_c = 1/(2πτ)</div>
+                        <div class="tau-value" id="fcDisplay" style="color:#00d4ff">1.59 Hz</div>
+                    </div>
+                </div>
+
+                <!-- Simulation speed -->
+                <div class="speed-box">
+                    <div class="slider-label">
+                        <span style="color:#00d4ff;font-weight:600;">⏩ Velocidad simulación</span>
+                        <span class="slider-val" id="speedVal" style="color:#00d4ff;">1×</span>
+                    </div>
+                    <input type="range" id="speedSl" min="1" max="8" value="2" step="1" oninput="updateSpeed()">
+                    <div style="display:flex;justify-content:space-between;font-size:9px;color:#555">
+                        <span>Lento (τ visible)</span>
+                        <span>Rápido</span>
+                    </div>
+                </div>
+
+            </div><!-- /params-grid -->
+
+            <div class="btns-row">
+                <button class="btn btn-start" id="btnStart" onclick="startSim()">▶️ INICIAR</button>
+                <button class="btn btn-stop"  id="btnStop"  onclick="stopSim()" disabled>⏹️ DETENER</button>
+                <button class="btn btn-reset" style="grid-column:span 2" onclick="resetSim()">🔄 REINICIAR</button>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-cell">
+                    <div class="metric-label">Ripple Entrada</div>
+                    <div class="metric-val val-in"  id="metIn">0.00 V</div>
+                </div>
+                <div class="metric-cell">
+                    <div class="metric-label">Ripple Salida</div>
+                    <div class="metric-val val-out" id="metOut">0.00 V</div>
+                </div>
+                <div class="metric-cell">
+                    <div class="metric-label">Reducción ripple</div>
+                    <div class="metric-val val-red" id="metRed">0.0%</div>
+                </div>
+                <div class="metric-cell">
+                    <div class="metric-label">Estado</div>
+                    <div class="metric-val val-tau" id="metStatus">⏸ Listo</div>
+                </div>
+            </div>
+        </div><!-- /side-panel -->
+
+        <!-- ── EXPLANATION ── -->
+        <div class="expl-area">
+            <h3 class="expl-title" id="explTitle">🎯 ¿Cómo suaviza el condensador?</h3>
+            <div class="expl-content" id="explContent">
+                <p>Este simulador muestra cómo un <span class="highlight">filtro RC</span> elimina las oscilaciones (ripple) de una señal DC fluctuante.</p>
+                <div class="formula-inline">τ = R × C &nbsp;|&nbsp; f_corte = 1 / (2π·τ)</div>
+                <p><strong>Clave:</strong> Si τ ≫ T<sub>ripple</sub> el condensador apenas puede descargarse entre pico y pico → la salida queda casi plana. Si τ es pequeño, sigue la entrada casi sin filtrado.</p>
+                <p style="margin-top:7px;padding:7px 10px;background:rgba(0,212,255,.1);border-radius:6px;border-left:3px solid #00d4ff;">
+                    <strong>💡 Experimenta:</strong> Mueve el slider de <span class="highlight">Capacitancia</span> de 10μF a 10000μF mientras la simulación corre y observa cómo la línea verde se aplana progresivamente.
+                </p>
+            </div>
+        </div>
+    </div><!-- /main-layout -->
+</div><!-- /container -->
+
+<script>
+// ════════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════════
+const canvas = document.getElementById('mainCanvas');
+const ctx    = canvas.getContext('2d');
+
+// Physical parameters (SI units internally)
+let params = { freq:60, ripPct:30, vDC:12, cap:1000, res:100 };
+
+// simSpeed: how many seconds of physical time advance per real second
+// The key insight: we use real physical dt so τ=RC has real meaning.
+// At speed=1 → 0.05 s/s (very slow, you see the RC charge clearly)
+// At speed=8 → 0.4 s/s
+const SPEED_TABLE = [0.025, 0.05, 0.1, 0.2, 0.35, 0.5, 0.7, 1.0];
+let simSpeed = SPEED_TABLE[1]; // default index 1
+
+// Oscilloscope buffer — stores (physTime, vIn, vOut) tuples
+// Window shows WINDOW_T seconds of physical time
+const WINDOW_T = 3.0; // seconds visible on screen
+const MAX_PTS  = 1800;
+
+let buffer = [];   // [{t, vin, vout}]
+let physTime = 0;  // accumulated physical time (s)
+let vOut_prev = 0; // last output voltage (state)
+
+let running = false;
+let animId  = null;
+let lastRealMs = null;
+
+// ════════════════════════════════════════════════
+//  CANVAS RESIZE
+// ════════════════════════════════════════════════
+function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width  = rect.width  * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width  = rect.width  + 'px';
+    canvas.style.height = rect.height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (!running) drawScene();
+}
+
+window.addEventListener('resize', resize);
+
+// ════════════════════════════════════════════════
+//  PHYSICS
+// ════════════════════════════════════════════════
+function getTau() {
+    // R in Ω, C in μF → τ in seconds
+    return (params.res * params.cap) / 1e6;
+}
+
+function genInput(t) {
+    return params.vDC * (1 + (params.ripPct / 100) * Math.sin(2 * Math.PI * params.freq * t));
+}
+
+// First-order RC filter step (exact discrete solution)
+// vOut(t+dt) = vIn - (vIn - vOut(t)) * exp(-dt/τ)
+function filterStep(vIn, vPrev, dt) {
+    const tau = getTau();
+    if (tau < 1e-9) return vIn;
+    const alpha = Math.exp(-dt / tau);
+    return vIn - (vIn - vPrev) * alpha;
+}
+
+// ════════════════════════════════════════════════
+//  ANIMATION LOOP
+// ════════════════════════════════════════════════
+function animate(realMs) {
+    if (!running) return;
+
+    // Real elapsed ms since last frame
+    if (lastRealMs === null) lastRealMs = realMs;
+    const realDt  = Math.min((realMs - lastRealMs) / 1000, 0.05); // cap at 50ms
+    lastRealMs = realMs;
+
+    // Physical time step
+    const physDt = realDt * simSpeed;
+
+    // Sub-step to keep accuracy: min(dt, τ/10, T_ripple/20)
+    const tau     = getTau();
+    const Tripple = params.freq > 0 ? 1 / params.freq : 1;
+    const maxSub  = Math.max(1e-6, Math.min(tau / 10, Tripple / 20, physDt));
+    const nSteps  = Math.ceil(physDt / maxSub);
+    const subDt   = physDt / nSteps;
+
+    for (let i = 0; i < nSteps; i++) {
+        physTime += subDt;
+        const vIn = genInput(physTime);
+        vOut_prev = filterStep(vIn, vOut_prev, subDt);
+
+        // Store into buffer at a reasonable rate (not every sub-step)
+        if (i === nSteps - 1 || buffer.length === 0) {
+            buffer.push({ t: physTime, vin: vIn, vout: vOut_prev });
+        }
+    }
+
+    // Trim buffer: keep only last WINDOW_T * some_density points
+    const tMin = physTime - WINDOW_T;
+    // Remove points older than window
+    while (buffer.length > 2 && buffer[0].t < tMin) buffer.shift();
+    // Also cap absolute size
+    if (buffer.length > MAX_PTS) buffer.splice(0, buffer.length - MAX_PTS);
+
+    drawScene();
+    updateMetrics();
+
+    animId = requestAnimationFrame(animate);
+}
+
+// ════════════════════════════════════════════════
+//  DRAWING
+// ════════════════════════════════════════════════
+function getDim() {
+    const W = canvas.offsetWidth;
+    const H = canvas.offsetHeight;
+    return {
+        W, H,
+        gx: 52,
+        gy: 36,
+        gw: W - 65,
+        gh: H - 110,
+        circY: H - 52
+    };
+}
+
+const colors = {
+    grid:   'rgba(100,130,170,0.1)',
+    axis:   'rgba(150,170,200,0.3)',
+    inSig:  '#ff6b6b',
+    outSig: '#51cf66',
+    dcLine: '#ffd93d'
+};
+
+function drawGrid(d) {
+    ctx.save();
+
+    // Grid lines
+    ctx.strokeStyle = colors.grid;
+    ctx.lineWidth   = 1;
+    for (let i = 0; i <= 12; i++) {
+        const x = d.gx + (i / 12) * d.gw;
+        ctx.beginPath(); ctx.moveTo(x, d.gy); ctx.lineTo(x, d.gy + d.gh); ctx.stroke();
+    }
+    for (let i = 0; i <= 8; i++) {
+        const y = d.gy + (i / 8) * d.gh;
+        ctx.beginPath(); ctx.moveTo(d.gx, y); ctx.lineTo(d.gx + d.gw, y); ctx.stroke();
+    }
+
+    // Axes
+    ctx.strokeStyle = colors.axis;
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath(); ctx.moveTo(d.gx, d.gy);        ctx.lineTo(d.gx, d.gy + d.gh);        ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(d.gx, d.gy + d.gh); ctx.lineTo(d.gx + d.gw, d.gy + d.gh); ctx.stroke();
+
+    // Labels
+    ctx.fillStyle  = '#8899aa';
+    ctx.font       = '9px Arial';
+    ctx.textAlign  = 'center';
+    ctx.fillText('TIEMPO →', d.gx + d.gw / 2, d.gy + d.gh + 14);
+
+    ctx.save();
+    ctx.translate(d.gx - 30, d.gy + d.gh / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('VOLTAJE (V)', 0, 0);
+    ctx.restore();
+
+    // Voltage scale
+    const vMax = params.vDC * (1 + params.ripPct / 100 + 0.05);
+    const vMin = params.vDC * (1 - params.ripPct / 100 - 0.05);
+    const vRange = vMax - vMin;
+
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+        const frac  = i / 4;
+        const vHere = vMax - frac * vRange;
+        const yHere = d.gy + frac * d.gh;
+        ctx.fillText(vHere.toFixed(1) + 'V', d.gx - 4, yHere + 3);
+
+        // Subtle tick
+        ctx.strokeStyle = colors.axis;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(d.gx - 4, yHere); ctx.lineTo(d.gx, yHere); ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+function voltToY(v, d) {
+    const vMax   = params.vDC * (1 + params.ripPct / 100 + 0.05);
+    const vMin   = params.vDC * (1 - params.ripPct / 100 - 0.05);
+    const vRange = vMax - vMin;
+    return d.gy + d.gh - ((v - vMin) / vRange) * d.gh;
+}
+
+function timeToX(t, d) {
+    // Map [physTime - WINDOW_T, physTime] → [gx, gx+gw]
+    const tEnd   = physTime;
+    const tStart = tEnd - WINDOW_T;
+    return d.gx + ((t - tStart) / WINDOW_T) * d.gw;
+}
+
+function drawDCLine(d) {
+    const y = voltToY(params.vDC, d);
+    ctx.save();
+    ctx.strokeStyle = colors.dcLine;
+    ctx.lineWidth   = 1.2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.moveTo(d.gx, y); ctx.lineTo(d.gx + d.gw, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle  = colors.dcLine;
+    ctx.font       = '9px Arial';
+    ctx.textAlign  = 'left';
+    ctx.fillText('DC=' + params.vDC.toFixed(1) + 'V', d.gx + 6, y - 4);
+    ctx.restore();
+}
+
+function drawSignal(key, color, lineWidth, glowColor, d) {
+    if (buffer.length < 2) return;
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = lineWidth || 2.2;
+    ctx.lineJoin    = 'round';
+    ctx.lineCap     = 'round';
+    if (glowColor) { ctx.shadowColor = glowColor; ctx.shadowBlur = 6; }
+
+    ctx.beginPath();
+    let first = true;
+
+    for (let i = 0; i < buffer.length; i++) {
+        const pt = buffer[i];
+        const x  = timeToX(pt.t, d);
+        const y  = voltToY(pt[key], d);
+        if (x < d.gx - 2) continue;
+        if (first) { ctx.moveTo(x, y); first = false; }
+        else        ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+}
+
+// Simple RC capacitor schematic
+function drawCircuit(d) {
+    const x = d.W / 2 - 10;
+    const y = d.circY;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    roundRect(ctx, x - 175, y - 24, 350, 50, 8); ctx.fill();
+
+    // ENTRY label
+    ctx.font = 'bold 9px Arial';
+    ctx.fillStyle = '#ff6b6b';
+    ctx.textAlign = 'center';
+    ctx.fillText('ENTRADA', x - 145, y - 7);
+    ctx.fillText('(±ripple)', x - 145, y + 9);
+
+    // wire in
+    ctx.strokeStyle = '#666'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(x - 110, y); ctx.lineTo(x - 35, y); ctx.stroke();
+
+    // Capacitor plates
+    const tau    = getTau();
+    const charge = running ? (0.5 + 0.45 * Math.sin(physTime * params.freq * 2 * Math.PI * 0.3)) : 0.5;
+    const glow   = running ? `rgba(0,212,255,${0.25 + charge * 0.45})` : 'rgba(0,212,255,0.2)';
+
+    ctx.fillStyle   = glow;
+    ctx.shadowColor = glow;
+    ctx.shadowBlur  = running ? 8 : 0;
+    roundRect(ctx, x - 35, y - 16, 6, 33, 2); ctx.fill();
+    roundRect(ctx, x + 29, y - 16, 6, 33, 2); ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = 'rgba(0,212,255,0.08)';
+    ctx.fillRect(x - 29, y - 14, 58, 28);
+
+    // C value on cap
+    ctx.font       = 'bold 9px Arial';
+    ctx.fillStyle  = '#00d4ff';
+    ctx.textAlign  = 'center';
+    ctx.fillText('C=' + (params.cap >= 1000 ? (params.cap/1000).toFixed(1)+'mF' : params.cap+'μF'), x, y - 22);
+
+    // wire mid
+    ctx.strokeStyle = '#666'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(x + 35, y); ctx.lineTo(x + 80, y); ctx.stroke();
+
+    // Resistor body
+    ctx.fillStyle   = '#2e2e2e';
+    ctx.strokeStyle = '#666'; ctx.lineWidth = 1.5;
+    roundRect(ctx, x + 80, y - 8, 48, 16, 3); ctx.fill(); ctx.stroke();
+    // Value text inside resistor
+    ctx.fillStyle  = '#ffd93d';
+    ctx.font       = 'bold 9px Arial';
+    ctx.textAlign  = 'center';
+    ctx.fillText((params.res >= 1000 ? (params.res/1000).toFixed(1)+'kΩ' : params.res+'Ω'), x + 104, y + 0.5);
+
+    // leads
+    ctx.fillStyle = '#555';
+    ctx.fillRect(x + 74, y - 3, 8, 6);
+    ctx.fillRect(x + 128, y - 3, 8, 6);
+
+    // R label above
+    ctx.font = 'bold 8px Arial';
+    ctx.fillStyle = '#ffd93d';
+    ctx.fillText('R', x + 104, y - 14);
+
+    // wire out
+    ctx.strokeStyle = '#666'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(x + 136, y); ctx.lineTo(x + 164, y); ctx.stroke();
+
+    // EXIT label
+    ctx.font = 'bold 9px Arial';
+    ctx.fillStyle = '#51cf66';
+    ctx.fillText('SALIDA', x + 164, y - 7);
+    ctx.fillText('(suave)', x + 164, y + 9);
+
+    ctx.restore();
+}
+
+function drawScene() {
+    const d = getDim();
+    ctx.clearRect(0, 0, d.W, d.H);
+    drawGrid(d);
+    drawDCLine(d);
+    drawSignal('vin',  colors.inSig,  2.0, 'rgba(255,107,107,0.35)', d);
+    drawSignal('vout', colors.outSig, 2.8, 'rgba(81,207,102,0.45)',  d);
+    drawCircuit(d);
+}
+
+// ════════════════════════════════════════════════
+//  CONTROLS
+// ════════════════════════════════════════════════
+function startSim() {
+    if (running) return;
+    running      = true;
+    lastRealMs   = null;
+    // Pre-seed output to DC so it doesn't start from zero
+    vOut_prev    = params.vDC;
+    // Pre-fill buffer with one period of data so graph isn't empty
+    const tau     = getTau();
+    const Tripple = params.freq > 0 ? 1 / params.freq : 0.1;
+    const preT    = Math.max(WINDOW_T * 0.4, tau * 3, Tripple * 4);
+    const nPre    = 400;
+    const dtPre   = preT / nPre;
+    buffer = [];
+    let t0 = physTime;
+    for (let i = 0; i < nPre; i++) {
+        t0 += dtPre;
+        const vIn = genInput(t0);
+        vOut_prev = filterStep(vIn, vOut_prev, dtPre);
+        if (i % 3 === 0) buffer.push({ t: t0, vin: vIn, vout: vOut_prev });
+    }
+    physTime = t0;
+
+    document.getElementById('btnStart').disabled = true;
+    document.getElementById('btnStop').disabled  = false;
+    document.getElementById('statusBadge').className   = 'status-badge status-run';
+    document.getElementById('statusBadge').textContent = '▶ ACTIVO';
+    document.getElementById('metStatus').textContent   = '🔄 Filtrando';
+    document.getElementById('metStatus').className     = 'metric-val val-tau';
+
+    animId = requestAnimationFrame(animate);
+}
+
+function stopSim() {
+    running = false;
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+    lastRealMs = null;
+
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').disabled  = true;
+    document.getElementById('statusBadge').className   = 'status-badge status-idle';
+    document.getElementById('statusBadge').textContent = 'PAUSA';
+    document.getElementById('metStatus').textContent   = '⏸ Detenido';
+    document.getElementById('metStatus').className     = 'metric-val val-tau';
+}
+
+function resetSim() {
+    stopSim();
+    buffer    = [];
+    physTime  = 0;
+    vOut_prev = params.vDC;
+
+    document.getElementById('btnStart').disabled       = false;
+    document.getElementById('statusBadge').className   = 'status-badge status-idle';
+    document.getElementById('statusBadge').textContent = 'ESPERA';
+    document.getElementById('metStatus').textContent   = '⏸ Listo';
+    document.getElementById('metStatus').className     = 'metric-val val-tau';
+
+    updateMetrics();
+    drawScene();
+}
+
+// ════════════════════════════════════════════════
+//  PARAM UPDATES
+// ════════════════════════════════════════════════
+function updateParams() {
+    params.freq   = +document.getElementById('freqSl').value;
+    params.ripPct = +document.getElementById('ripSl').value;
+    params.vDC    = +document.getElementById('dcSl').value;
+    params.cap    = +document.getElementById('capSl').value;
+    params.res    = +document.getElementById('resSl').value;
+
+    document.getElementById('freqVal').textContent = params.freq + ' Hz';
+    document.getElementById('ripVal').textContent  = params.ripPct + '%';
+    document.getElementById('dcVal').textContent   = params.vDC.toFixed(1) + ' V';
+    document.getElementById('capVal').textContent  = params.cap >= 1000
+        ? (params.cap/1000).toFixed(1) + ' mF' : params.cap + ' μF';
+    document.getElementById('resVal').textContent  = params.res >= 1000
+        ? (params.res/1000).toFixed(1) + ' kΩ' : params.res + ' Ω';
+
+    const tau = getTau();
+    const fc  = tau > 0 ? 1 / (2 * Math.PI * tau) : 0;
+    document.getElementById('tauDisplay').textContent =
+        tau >= 1 ? tau.toFixed(2) + ' s' : (tau * 1000).toFixed(1) + ' ms';
+    document.getElementById('fcDisplay').textContent  = fc.toFixed(2) + ' Hz';
+
+    if (!running) {
+        // Regenerate static preview
+        buffer = [];
+        let vp  = params.vDC;
+        const nPts = 500;
+        const tSpan = WINDOW_T;
+        for (let i = 0; i < nPts; i++) {
+            const t   = (i / nPts) * tSpan;
+            const dt  = tSpan / nPts;
+            const vIn = genInput(t);
+            vp = filterStep(vIn, vp, dt);
+            if (i % 2 === 0) buffer.push({ t, vin: vIn, vout: vp });
+        }
+        physTime = tSpan;
+        drawScene();
+        updateMetrics();
+    }
+}
+
+function updateSpeed() {
+    const idx  = +document.getElementById('speedSl').value - 1;
+    simSpeed   = SPEED_TABLE[idx];
+    const labels = ['½×','1×','2×','4×','7×','10×','14×','20×'];
+    document.getElementById('speedVal').textContent = labels[idx];
+}
+
+function updateMetrics() {
+    if (buffer.length < 10) return;
+    const slice   = buffer.slice(-Math.min(120, buffer.length));
+    const vinArr  = slice.map(p => p.vin);
+    const voutArr = slice.map(p => p.vout);
+    const ripIn   = Math.max(...vinArr)  - Math.min(...vinArr);
+    const ripOut  = Math.max(...voutArr) - Math.min(...voutArr);
+    const red     = ripIn > 0.001 ? ((ripIn - ripOut) / ripIn * 100) : 0;
+
+    document.getElementById('metIn').textContent  = ripIn.toFixed(2)  + ' V';
+    document.getElementById('metOut').textContent = ripOut.toFixed(3) + ' V';
+    document.getElementById('metRed').textContent = red.toFixed(1)    + '%';
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.arcTo(x+w,y,x+w,y+r,r);
+    ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+    ctx.lineTo(x+r, y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+    ctx.lineTo(x, y+r); ctx.arcTo(x,y,x+r,y,r);
+    ctx.closePath();
+}
+
+// ════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════
+window.onload = function() {
+    resize();
+    updateSpeed();
+    updateParams();
+};
+</script>
+</body>
+</html>
