@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inductores — Inercia Eléctrica</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',sans-serif;background:#060c12;color:#dce8f0;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 65% 50% at 15% 30%,rgba(41,182,216,.08) 0%,transparent 60%),
+  radial-gradient(ellipse 55% 45% at 85% 70%,rgba(245,158,11,.06) 0%,transparent 60%);}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 16px 56px;position:relative}
+h1{text-align:center;font-size:clamp(1.7rem,4vw,2.8rem);font-weight:800;letter-spacing:-1.2px;margin-bottom:6px}
+h1 em{font-style:normal;color:#00d4aa}
+.sub{text-align:center;color:#5a7080;font-size:.95rem;margin-bottom:32px}
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+@media(max-width:740px){.panels{grid-template-columns:1fr}}
+.card{background:rgba(10,18,26,.92);border:1px solid rgba(90,112,128,.22);border-radius:16px;padding:18px}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ct{font-size:.9rem;font-weight:600;display:flex;align-items:center;gap:7px}
+.pill{display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:16px;
+  background:rgba(0,0,0,.3);border:1px solid rgba(90,112,128,.2);font-size:.67rem;font-weight:600;letter-spacing:.5px;color:#5a7080}
+.dot{width:7px;height:7px;border-radius:50%;background:#2a3a45;transition:.4s}
+.dot.on{background:#00d4aa;box-shadow:0 0 8px #00d4aa;animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+canvas{display:block;border-radius:10px;background:#040a10}
+.vals{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.vb{background:rgba(0,0,0,.4);border:1px solid rgba(90,112,128,.18);border-radius:9px;padding:9px 12px;text-align:center}
+.vl{font-size:.62rem;text-transform:uppercase;letter-spacing:.5px;color:#5a7080;margin-bottom:3px}
+.vn{font-size:1.1rem;font-weight:700;font-family:'JetBrains Mono',monospace}
+.note{margin-top:10px;font-size:.78rem;color:#5a7080;line-height:1.5}
+.note strong{color:#dce8f0}
+.ctrl{text-align:center;padding:20px;margin-bottom:16px}
+.row{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px}
+.btn{padding:13px 36px;font-size:.95rem;font-weight:700;border:none;border-radius:11px;
+  cursor:pointer;font-family:'Outfit',sans-serif;transition:.2s}
+.btn-on{background:linear-gradient(135deg,#00d4aa,#00a87e);color:#041a12;box-shadow:0 4px 20px rgba(0,212,170,.35)}
+.btn-off{background:linear-gradient(135deg,#ef4444,#c0392b);color:#fff;box-shadow:0 4px 20px rgba(239,68,68,.35)}
+.btn:hover{transform:translateY(-2px);filter:brightness(1.12)}
+select{background:rgba(0,0,0,.5);border:1px solid rgba(90,112,128,.3);color:#dce8f0;
+  border-radius:8px;padding:7px 12px;font-family:'JetBrains Mono',monospace;font-size:.82rem;cursor:pointer}
+.gc{padding:18px;margin-bottom:16px}
+.gt{font-size:.9rem;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.leg{display:flex;gap:18px;justify-content:center;margin-top:8px}
+.li{display:flex;align-items:center;gap:6px;font-size:.73rem;color:#5a7080}
+.ll{width:20px;height:3px;border-radius:2px}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:580px){.chips{grid-template-columns:1fr}}
+.chip{background:rgba(10,18,26,.92);border:1px solid rgba(90,112,128,.2);border-radius:13px;padding:14px;font-size:.77rem;color:#5a7080;line-height:1.5}
+.chip h4{font-size:.84rem;font-weight:600;color:#dce8f0;margin-bottom:5px}
+.iw{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:9px}
+.fcard{padding:18px;margin-bottom:16px}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+@media(max-width:500px){.fg{grid-template-columns:1fr}}
+.fb{background:rgba(0,0,0,.35);border-radius:9px;padding:12px}
+.feq{font-family:'JetBrains Mono',monospace;font-size:.98rem;color:#00d4aa;margin-bottom:5px;font-weight:600}
+.fp{font-size:.77rem;color:#5a7080;line-height:1.45}
+footer{text-align:center;padding:12px;color:#3a5060;font-size:.72rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Inductores: <em>Inercia Eléctrica</em></h1>
+<p class="sub">Analogía hidráulica vs. circuito eléctrico — simulación interactiva</p>
+
+<div class="panels">
+  <div class="card">
+    <div class="ch">
+      <div class="ct">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#29b6d8" stroke-width="2.2" stroke-linecap="round"><path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/></svg>
+        Analogía Hidráulica
+      </div>
+      <div class="pill"><span class="dot" id="hDot"></span><span id="hTxt">APAGADO</span></div>
+    </div>
+    <canvas id="hC" width="480" height="200" style="width:100%"></canvas>
+    <div class="vals">
+      <div class="vb"><div class="vl">Turbina</div><div class="vn" style="color:#29b6d8" id="vRPM">0 RPM</div></div>
+      <div class="vb"><div class="vl">Caudal</div><div class="vn" style="color:#29b6d8" id="vFlow">0.0 L/s</div></div>
+    </div>
+    <p class="note">La <strong>turbina</strong> resiste por inercia al encender, y sigue girando al apagar hasta que la fricción la detiene.</p>
+  </div>
+
+  <div class="card">
+    <div class="ch">
+      <div class="ct">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Circuito Eléctrico
+      </div>
+      <div class="pill"><span class="dot" id="eDot"></span><span id="eTxt">APAGADO</span></div>
+    </div>
+    <canvas id="eC" width="480" height="200" style="width:100%"></canvas>
+    <div class="vals">
+      <div class="vb"><div class="vl">Corriente</div><div class="vn" style="color:#f59e0b" id="vI">0.00 A</div></div>
+      <div class="vb"><div class="vl">Campo B</div><div class="vn" style="color:#34d399" id="vB">0 mT</div></div>
+    </div>
+    <p class="note">La <strong>bobina</strong> almacena energía en su campo magnético. Al apagar, ese campo colapsa manteniendo la corriente.</p>
+  </div>
+</div>
+
+<div class="card ctrl">
+  <div class="row">
+    <button class="btn btn-on" id="pwrBtn">⚡ ENCENDER CIRCUITO</button>
+    <div style="display:flex;align-items:center;gap:9px">
+      <label style="font-size:.82rem;color:#5a7080">Velocidad:</label>
+      <select id="spd">
+        <option value="0.5">Lenta ×0.5</option>
+        <option value="1" selected>Normal ×1</option>
+        <option value="2">Rápida ×2</option>
+        <option value="4">Muy rápida ×4</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="card gc">
+  <div class="gt">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 5-6"/></svg>
+    Corriente vs. Tiempo
+  </div>
+  <canvas id="gC" width="900" height="150" style="width:100%"></canvas>
+  <div class="leg">
+    <div class="li"><div class="ll" style="background:#29b6d8"></div>Corriente real</div>
+    <div class="li"><div class="ll" style="background:#00d4aa;opacity:.4"></div>Referencia escalón</div>
+  </div>
+</div>
+
+<div class="chips">
+  <div class="chip">
+    <div class="iw" style="background:rgba(41,182,216,.12)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#29b6d8" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+    <h4>Al Encender</h4>
+    La corriente sube lentamente. La bobina genera una FEM opuesta (Ley de Lenz) — como la turbina que resiste arrancar por inercia.
+  </div>
+  <div class="chip">
+    <div class="iw" style="background:rgba(52,211,153,.12)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+    <h4>En Régimen</h4>
+    Corriente y campo magnético estables. La bobina actúa como conductor simple. La turbina gira a velocidad máxima.
+  </div>
+  <div class="chip">
+    <div class="iw" style="background:rgba(239,68,68,.12)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></div>
+    <h4>Al Apagar</h4>
+    El campo colapsa empujando la corriente — no cae a cero de golpe. La turbina sigue girando por inercia hasta detenerse.
+  </div>
+</div>
+
+<div class="card fcard">
+  <div class="gt">📐 Fórmulas Clave</div>
+  <div class="fg">
+    <div class="fb"><div class="feq">V = L × (di/dt)</div><p class="fp">Voltaje inducido proporcional a la variación de corriente.</p></div>
+    <div class="fb"><div class="feq">τ = L / R</div><p class="fp">Constante de tiempo: la corriente llega al 63% en tiempo τ.</p></div>
+    <div class="fb"><div class="feq">I(t) = I₀(1−e⁻ᵗ/τ)</div><p class="fp">Crecimiento exponencial suave al encender.</p></div>
+    <div class="fb"><div class="feq">E = ½LI²</div><p class="fp">Energía almacenada en el campo magnético (Joules).</p></div>
+  </div>
+</div>
+<footer>Simulación educativa · Inductores · Electrónica Básica</footer>
+</div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────────────────
+var on=false, cur=0, tgt=0, spd=1;
+var turbRot=0, turbSpd=0, pumpAng=0;
+var magPhase=0, elapsed=0;
+var lastTS=0;
+var HIST=280, graphData=[];
+for(var i=0;i<HIST;i++) graphData.push({v:0,t:0});
+
+// ─── CANVAS REFS ─────────────────────────────────────────────────────────
+var hC=document.getElementById('hC');
+var eC=document.getElementById('eC');
+var gC=document.getElementById('gC');
+var hX=hC.getContext('2d');
+var eX=eC.getContext('2d');
+var gX=gC.getContext('2d');
+
+// ─── BUBBLES & ELECTRONS ──────────────────────────────────────────────────
+var bubbles=[], electrons=[], circPts=[];
+
+function newBubble(){
+  var W=480,H=200;
+  var L=58,T=28,R=W-58,B=H-32;
+  var side=Math.floor(Math.random()*4);
+  var x,y,vx=0,vy=0,r=1.5+Math.random()*3;
+  if(side===0){x=L+20+Math.random()*(R-L-40);y=T+3+Math.random()*9;vx=25+Math.random()*35;}
+  else if(side===1){x=R-3-Math.random()*9;y=T+20+Math.random()*(B-T-40);vy=18+Math.random()*25;}
+  else if(side===2){x=R-20-Math.random()*(R-L-40);y=B-3-Math.random()*9;vx=-(25+Math.random()*35);}
+  else{x=L+3+Math.random()*9;y=B-20-Math.random()*(B-T-40);vy=-(18+Math.random()*25);}
+  return{x:x,y:y,vx:vx,vy:vy,r:r,ph:Math.random()*6.28};
+}
+function initBubbles(){bubbles=[];for(var i=0;i<14;i++)bubbles.push(newBubble());}
+function initElectrons(){
+  var W=480,H=200;
+  var L=58,T=28,R=W-58,B=H-32,step=13;
+  circPts=[];
+  for(var x=L;x<=R;x+=step) circPts.push({x:x,y:T});
+  for(var y=T+step;y<=B;y+=step) circPts.push({x:R,y:y});
+  for(var x=R-step;x>=L;x-=step) circPts.push({x:x,y:B});
+  for(var y=B-step;y>T;y-=step) circPts.push({x:L,y:y});
+  electrons=[];
+  for(var i=0;i<10;i++) electrons.push({p:i/10});
+}
+initBubbles(); initElectrons();
+
+// ─── DRAW HYDRAULIC ───────────────────────────────────────────────────────
+function drawH(){
+  var ctx=hX, W=480, H=200;
+  var norm=cur/100;
+  ctx.clearRect(0,0,W,H);
+
+  var L=58,T=28,R=W-58,B=H-32,pr=12; // pipe radius
+
+  // draw a rounded-rect compatible way
+  function rrect(x,y,w,h,r,fill,stroke,lw){
+    var r2=Math.min(r,w/2,h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+r2,y); ctx.lineTo(x+w-r2,y);
+    ctx.quadraticCurveTo(x+w,y,x+w,y+r2);
+    ctx.lineTo(x+w,y+h-r2);
+    ctx.quadraticCurveTo(x+w,y+h,x+w-r2,y+h);
+    ctx.lineTo(x+r2,y+h);
+    ctx.quadraticCurveTo(x,y+h,x,y+h-r2);
+    ctx.lineTo(x,y+r2);
+    ctx.quadraticCurveTo(x,y,x+r2,y);
+    ctx.closePath();
+    if(fill){ctx.fillStyle=fill;ctx.fill();}
+    if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.stroke();}
+  }
+
+  // Pipe shells
+  var pShell='#162330', pBorder='#243545';
+  rrect(L-pr,T-pr,R-L+pr*2,pr*2,pr,pShell,pBorder,1.5); // top
+  rrect(L-pr,B-pr,R-L+pr*2,pr*2,pr,pShell,pBorder,1.5); // bottom
+  rrect(L-pr,T-pr,pr*2,B-T+pr*2,pr,pShell,pBorder,1.5); // left
+  rrect(R-pr,T-pr,pr*2,B-T+pr*2,pr,pShell,pBorder,1.5); // right
+
+  // Water inside
+  if(norm>0.008){
+    var wAlpha=Math.min(1,norm*1.5);
+    ctx.save(); ctx.globalAlpha=wAlpha;
+    var inner=pr-3;
+    function waterFill(x,y,w,h){
+      var g=ctx.createLinearGradient(x,y,x,y+h);
+      g.addColorStop(0,'rgba(16,110,150,.9)');
+      g.addColorStop(0.5,'rgba(41,182,216,.97)');
+      g.addColorStop(1,'rgba(16,110,150,.9)');
+      rrect(x,y,w,h,inner,g,null,0);
+    }
+    waterFill(L-inner,T-inner,R-L+inner*2,inner*2);
+    waterFill(L-inner,B-inner,R-L+inner*2,inner*2);
+    waterFill(L-inner,T-inner,inner*2,B-T+inner*2);
+    waterFill(R-inner,T-inner,inner*2,B-T+inner*2);
+
+    // shimmer on top pipe
+    ctx.globalAlpha=wAlpha*0.3;
+    for(var s=0;s<3;s++){
+      var sx=L+((elapsed*70*(s+1))%(R-L));
+      ctx.fillStyle='rgba(180,240,255,.7)';
+      ctx.beginPath(); ctx.ellipse(sx,T,18,2.5,0,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Bubbles
+  if(norm>0.04){
+    ctx.save();
+    bubbles.forEach(function(b){
+      var a=Math.min(0.55,norm)*Math.abs(Math.sin(b.ph));
+      ctx.globalAlpha=a;
+      ctx.fillStyle='rgba(130,215,255,.5)';
+      ctx.strokeStyle='rgba(200,245,255,.5)';
+      ctx.lineWidth=0.7;
+      ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+      ctx.fill(); ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  // Flow arrows top (L→R) and bottom (R→L)
+  if(norm>0.05){
+    ctx.save();
+    ctx.globalAlpha=Math.min(0.85,norm*2);
+    ctx.fillStyle='rgba(41,182,216,.8)';
+    ctx.font='bold 13px Outfit,sans-serif';
+    ctx.textAlign='center';
+    var phase=(elapsed*55)%55;
+    // top arrows
+    [L+50+phase, (L+R)/2-20+phase, R-80+phase].forEach(function(ax){
+      if(ax>L+10&&ax<R-10) ctx.fillText('▶',ax,T+5);
+    });
+    // bottom arrows (reversed)
+    var phase2=(elapsed*55)%55;
+    [R-50-phase2,(L+R)/2+20-phase2,L+80-phase2].forEach(function(ax){
+      if(ax>L+10&&ax<R-10) ctx.fillText('◀',ax,B+5);
+    });
+    // left arrow (upward) and right arrow (downward)
+    ctx.font='bold 11px Outfit,sans-serif';
+    ctx.fillText('▲',L,(T+B)/2+(((elapsed*45)%45)-22));
+    ctx.fillText('▼',R,(T+B)/2+(((elapsed*45)%45)-22));
+    ctx.restore();
+  }
+
+  // PUMP (left)
+  var px=L, py=(T+B)/2;
+  ctx.save();
+  // body
+  var pg=ctx.createRadialGradient(px-4,py-4,2,px,py,22);
+  pg.addColorStop(0,'#1e4a5a'); pg.addColorStop(1,'#0a1e2a');
+  ctx.beginPath(); ctx.arc(px,py,22,0,Math.PI*2);
+  ctx.fillStyle=pg; ctx.fill();
+  ctx.strokeStyle='#2a6080'; ctx.lineWidth=2; ctx.stroke();
+  // spinning impeller
+  ctx.translate(px,py); ctx.rotate(pumpAng);
+  for(var i=0;i<4;i++){
+    ctx.rotate(Math.PI/2);
+    ctx.beginPath();
+    ctx.moveTo(0,-1);
+    ctx.bezierCurveTo(5,-6,14,-14,7,-19);
+    ctx.bezierCurveTo(2,-19,-5,-13,0,-1);
+    ctx.fillStyle='rgba(41,182,216,'+(0.35+norm*0.55)+')';
+    ctx.fill();
+  }
+  ctx.restore();
+  ctx.fillStyle='rgba(41,182,216,.45)'; ctx.font='7px Outfit'; ctx.textAlign='center';
+  ctx.fillText('BOMBA',px,py+32);
+
+  // TURBINE (center)
+  var tx=(L+R)/2, ty=(T+B)/2;
+  ctx.save();
+  var tg=ctx.createRadialGradient(tx,ty,3,tx,ty,30);
+  tg.addColorStop(0,'#162535'); tg.addColorStop(1,'#080e18');
+  ctx.beginPath(); ctx.arc(tx,ty,30,0,Math.PI*2);
+  ctx.fillStyle=tg; ctx.fill();
+  ctx.strokeStyle='#244560'; ctx.lineWidth=2.5; ctx.stroke();
+
+  ctx.translate(tx,ty); ctx.rotate(turbRot*Math.PI/180);
+  for(var i=0;i<5;i++){
+    ctx.rotate(Math.PI*2/5);
+    var bg=ctx.createLinearGradient(0,0,0,-22);
+    bg.addColorStop(0,'#7a3a10'); bg.addColorStop(0.6,'#cd7f32'); bg.addColorStop(1,'#e8972e');
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.bezierCurveTo(5,-5,7,-16,3,-23);
+    ctx.bezierCurveTo(-1,-23,-6,-15,0,0);
+    ctx.fillStyle=bg; ctx.fill();
+  }
+  if(norm>0.06){
+    ctx.shadowColor='rgba(205,127,50,.6)'; ctx.shadowBlur=14;
+  }
+  ctx.beginPath(); ctx.arc(0,0,9,0,Math.PI*2);
+  ctx.fillStyle='#7a3a10'; ctx.fill();
+  ctx.beginPath(); ctx.arc(0,0,4.5,0,Math.PI*2);
+  ctx.fillStyle='#cd7f32'; ctx.fill();
+  ctx.restore();
+
+  var rpm=Math.round(turbSpd*600);
+  ctx.fillStyle='rgba(41,182,216,.65)'; ctx.font='bold 8px JetBrains Mono,monospace'; ctx.textAlign='center';
+  ctx.fillText(rpm+' RPM',tx,ty-38);
+  ctx.fillStyle='rgba(80,140,170,.45)'; ctx.font='7px Outfit,sans-serif';
+  ctx.fillText('TURBINA',tx,ty+42);
+
+  // Pipe inner highlight
+  ctx.save(); ctx.globalAlpha=0.09; ctx.strokeStyle='#fff'; ctx.lineWidth=1.5;
+  rrect(L-pr+2,T-pr+2,R-L+pr*2-4,pr*2-4,pr-2,null,'#fff',1);
+  ctx.restore();
+}
+
+// ─── DRAW ELECTRIC ────────────────────────────────────────────────────────
+function drawE(){
+  var ctx=eX, W=480, H=200;
+  var norm=cur/100;
+  ctx.clearRect(0,0,W,H);
+
+  var L=58,T=28,R=W-58,B=H-32,wr=7;
+
+  function rrect(x,y,w,h,r,fill,stroke,lw){
+    var r2=Math.min(r,w/2,h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+r2,y); ctx.lineTo(x+w-r2,y);
+    ctx.quadraticCurveTo(x+w,y,x+w,y+r2);
+    ctx.lineTo(x+w,y+h-r2);
+    ctx.quadraticCurveTo(x+w,y+h,x+w-r2,y+h);
+    ctx.lineTo(x+r2,y+h);
+    ctx.quadraticCurveTo(x,y+h,x,y+h-r2);
+    ctx.lineTo(x,y+r2);
+    ctx.quadraticCurveTo(x,y,x+r2,y);
+    ctx.closePath();
+    if(fill){ctx.fillStyle=fill;ctx.fill();}
+    if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.stroke();}
+  }
+
+  // Wires
+  function wire(x,y,w,h){
+    var g=ctx.createLinearGradient(x,y,x,y+h);
+    g.addColorStop(0,'#4a3728'); g.addColorStop(0.5,'#2d1f16'); g.addColorStop(1,'#4a3728');
+    rrect(x,y,w,h,wr,g,'rgba(80,55,36,.5)',1);
+  }
+  wire(L,T-wr,R-L,wr*2);       // top
+  wire(L,B-wr,R-L,wr*2);       // bottom
+  wire(L-wr,T,wr*2,B-T);       // left
+  wire(R-wr,T,wr*2,B-T);       // right
+
+  // Wire glow when current flows
+  if(norm>0.05){
+    ctx.save(); ctx.globalAlpha=norm*0.22;
+    ctx.shadowColor='rgba(245,158,11,.9)'; ctx.shadowBlur=14;
+    ctx.strokeStyle='rgba(245,158,11,.7)'; ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.moveTo(L,T); ctx.lineTo(R,T); ctx.lineTo(R,B); ctx.lineTo(L,B); ctx.closePath();
+    ctx.stroke(); ctx.shadowBlur=0; ctx.restore();
+  }
+
+  // BATTERY (left)
+  var bx=L, by=(T+B)/2;
+  ctx.save();
+  var bg2=ctx.createLinearGradient(bx-14,by-25,bx+14,by+25);
+  bg2.addColorStop(0,'#1a3a1a'); bg2.addColorStop(1,'#0d1e0d');
+  rrect(bx-14,by-24,28,48,5,bg2,'#2a5a2a',1.5);
+  [[by-13,3,'#4ade80'],[by-3,1.5,'#4ade80'],[by+8,3,'#4ade80']].forEach(function(d){
+    ctx.strokeStyle=d[2]; ctx.lineWidth=d[1];
+    ctx.beginPath(); ctx.moveTo(bx-9,d[0]); ctx.lineTo(bx+9,d[0]); ctx.stroke();
+  });
+  ctx.fillStyle='#4ade80'; ctx.font='bold 10px Outfit,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('+',bx-21,by-8);
+  ctx.fillStyle='#ef4444'; ctx.fillText('−',bx-21,by+13);
+  ctx.fillStyle='rgba(80,150,80,.5)'; ctx.font='7px Outfit,sans-serif';
+  ctx.fillText('12V',bx,by+33);
+  ctx.restore();
+
+  // RESISTOR (top wire ~1/3 from left)
+  var rx=L+(R-L)*0.33, ry=T;
+  ctx.save();
+  rrect(rx-23,ry-9,46,18,4,'#162216','#2a4a2a',1.2);
+  ctx.strokeStyle='#4ade80'; ctx.lineWidth=1.8; ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(rx-21,ry);
+  [-15,-7,1,9,17].forEach(function(zx,zi){ctx.lineTo(rx+zx,ry+(zi%2===0?-5:5));});
+  ctx.lineTo(rx+21,ry); ctx.stroke();
+  ctx.fillStyle='rgba(74,222,128,.45)'; ctx.font='7px JetBrains Mono,monospace'; ctx.textAlign='center';
+  ctx.fillText('10Ω',rx,ry+19);
+  ctx.restore();
+
+  // SWITCH (top wire ~72% from left)
+  var swx=L+(R-L)*0.72, swy=T;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(swx,swy,10,0,Math.PI*2);
+  ctx.fillStyle='#0c1820'; ctx.fill();
+  ctx.strokeStyle='#2a4a60'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.strokeStyle=on?'#4ade80':'rgba(245,158,11,.75)'; ctx.lineWidth=2.5; ctx.lineCap='round';
+  ctx.beginPath();
+  if(on){ctx.moveTo(swx-7,swy);ctx.lineTo(swx+7,swy);}
+  else{ctx.moveTo(swx-6,swy+4);ctx.lineTo(swx+5,swy-4);}
+  ctx.stroke();
+  ctx.fillStyle='rgba(80,120,150,.45)'; ctx.font='7px Outfit,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('SW',swx,swy+21);
+  ctx.restore();
+
+  // INDUCTOR COIL (bottom wire, center)
+  var cx=(L+R)/2, cy=B;
+  var nT=8, cW=100, turnW=cW/nT;
+  var cl=cx-cW/2;
+
+  // Ferrite core
+  ctx.save();
+  rrect(cl-3,cy-6,cW+6,12,3,'#222','#404040',1);
+  if(norm>0.08){
+    ctx.globalAlpha=norm*0.35;
+    ctx.shadowColor='rgba(52,211,153,.9)'; ctx.shadowBlur=18;
+    ctx.fillStyle='rgba(52,211,153,.15)';
+    rrect(cl-3,cy-6,cW+6,12,3,'rgba(52,211,153,.15)',null,0);
+    ctx.shadowBlur=0;
+  }
+  ctx.restore();
+
+  // Coil turns
+  ctx.save();
+  if(norm>0.05){
+    ctx.shadowColor='rgba('+(Math.round(180+norm*75))+','+(Math.round(75+norm*45))+',30,.8)';
+    ctx.shadowBlur=7+norm*10;
+  }
+  var coilColor='rgb('+(Math.round(140+norm*115))+','+(Math.round(65+norm*55))+',25)';
+  ctx.strokeStyle=coilColor; ctx.lineWidth=3.5; ctx.lineCap='round';
+  for(var i=0;i<nT;i++){
+    var cx2=cl+i*turnW+turnW/2;
+    // top arc
+    ctx.beginPath();
+    ctx.arc(cx2,cy-3,turnW/2-1,Math.PI,0,false);
+    ctx.stroke();
+    // bottom arc
+    ctx.beginPath();
+    ctx.arc(cx2,cy+3,turnW/2-1,0,Math.PI,false);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Magnetic field rings
+  if(norm>0.08){
+    var rings=[{rx:32,ry:20},{rx:52,ry:32},{rx:74,ry:46},{rx:98,ry:60}];
+    rings.forEach(function(ring,i){
+      var threshold=i*0.22;
+      var rn=Math.max(0,(norm-threshold)/(1-threshold));
+      if(rn<0.02) return;
+      var pulse=0.5+0.5*Math.sin(magPhase*2.2-i*0.9);
+      ctx.save();
+      ctx.globalAlpha=rn*0.5*pulse;
+      ctx.strokeStyle='#34d399'; ctx.lineWidth=Math.max(0.4,1.4-i*0.3);
+      ctx.setLineDash([5,3]);
+      ctx.beginPath(); ctx.ellipse(cx,cy,ring.rx,ring.ry,0,0,Math.PI*2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    });
+    // Field direction arrows
+    ctx.save(); ctx.globalAlpha=norm*0.6; ctx.fillStyle='#34d399';
+    ctx.font='10px Outfit,sans-serif'; ctx.textAlign='center';
+    ctx.fillText('→',cx+55,cy-2);
+    ctx.fillText('←',cx-60,cy-2);
+    // Field label above coil
+    ctx.globalAlpha=norm*0.75;
+    ctx.fillStyle='#34d399'; ctx.font='bold 8px JetBrains Mono,monospace';
+    ctx.fillText('B = '+Math.round(norm*500)+' mT',cx,cy-60);
+    ctx.restore();
+  }
+
+  // Labels
+  ctx.fillStyle='rgba(140,110,60,.5)'; ctx.font='7px Outfit,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('INDUCTOR L = 100mH',cx,cy+30);
+
+  // ELECTRONS
+  if(norm>0.03&&circPts.length>0){
+    var espd=0.003+norm*0.007;
+    electrons.forEach(function(e){
+      e.p=(e.p+espd)%1;
+      var idx=Math.floor(e.p*circPts.length)%circPts.length;
+      var pt=circPts[idx];
+      ctx.save();
+      ctx.globalAlpha=Math.min(1,norm*2.5);
+      ctx.shadowColor='rgba(245,158,11,1)'; ctx.shadowBlur=9;
+      var eg=ctx.createRadialGradient(pt.x,pt.y,0,pt.x,pt.y,5);
+      eg.addColorStop(0,'#fef3c7'); eg.addColorStop(1,'#f59e0b');
+      ctx.fillStyle=eg;
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,4.5,0,Math.PI*2); ctx.fill();
+      ctx.shadowBlur=0;
+      ctx.restore();
+    });
+  }
+}
+
+// ─── DRAW GRAPH ───────────────────────────────────────────────────────────
+function drawG(){
+  var ctx=gX, W=900, H=150;
+  var pad={t:14,r:14,b:24,l:42};
+  var gW=W-pad.l-pad.r, gH=H-pad.t-pad.b;
+
+  ctx.fillStyle='#040a10'; ctx.fillRect(0,0,W,H);
+
+  // Grid lines + labels
+  ctx.strokeStyle='rgba(90,112,128,.11)'; ctx.lineWidth=1;
+  for(var i=0;i<=4;i++){
+    var gy=pad.t+(gH/4)*i;
+    ctx.beginPath(); ctx.moveTo(pad.l,gy); ctx.lineTo(W-pad.r,gy); ctx.stroke();
+    ctx.fillStyle='#4a6070'; ctx.font='8px JetBrains Mono,monospace'; ctx.textAlign='right';
+    ctx.fillText(''+(100-i*25)+'%',pad.l-5,gy+4);
+  }
+  ctx.fillStyle='#4a6070'; ctx.font='8px JetBrains Mono,monospace'; ctx.textAlign='center';
+  ctx.fillText('tiempo →',W/2,H-5);
+
+  // Reference (step)
+  ctx.strokeStyle='rgba(0,212,170,.25)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+  ctx.beginPath();
+  graphData.forEach(function(p,i){
+    var x=pad.l+(i/HIST)*gW, y=pad.t+gH-(p.t/100)*gH;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // Actual curve
+  ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.lineJoin='round';
+  var grad=ctx.createLinearGradient(pad.l,0,W-pad.r,0);
+  grad.addColorStop(0,'rgba(41,182,216,.25)'); grad.addColorStop(1,'#29b6d8');
+  ctx.strokeStyle=grad;
+  ctx.beginPath();
+  graphData.forEach(function(p,i){
+    var x=pad.l+(i/HIST)*gW;
+    var v=Math.max(0,Math.min(100,p.v));
+    var y=pad.t+gH-(v/100)*gH;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  // Live dot
+  var last=graphData[graphData.length-1];
+  var lx=pad.l+gW, ly=pad.t+gH-(Math.max(0,Math.min(100,last.v))/100)*gH;
+  ctx.fillStyle='#29b6d8';
+  ctx.beginPath(); ctx.arc(lx,ly,5,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(lx,ly,5,0,Math.PI*2); ctx.stroke();
+}
+
+// ─── PHYSICS + UPDATE ─────────────────────────────────────────────────────
+function step(dt){
+  var tau=2200/spd;
+  var a=1-Math.exp(-dt/Math.max(1,tau));
+  cur+=(tgt-cur)*a;
+  cur=Math.max(0,Math.min(100,cur));
+
+  var norm=cur/100;
+  var tgtSpd=tgt*0.17;
+  turbSpd+=(tgtSpd-turbSpd)*(1-0.965)*(dt/16);
+  turbRot=(turbRot+turbSpd*dt)%360;
+  pumpAng+=(norm*0.009+0.0006)*dt;
+  magPhase+=dt*0.0016;
+  elapsed+=dt*0.001;
+
+  // bubbles
+  bubbles.forEach(function(b){
+    b.ph+=dt*0.002;
+    if(norm>0.04){
+      b.x+=b.vx*dt*0.001*(0.25+norm*0.75);
+      b.y+=b.vy*dt*0.001*(0.25+norm*0.75);
+    }
+    var W=480,H=200,L=58,T=28,R=W-58,B=H-32;
+    if(b.x<L-5||b.x>R+5||b.y<T-5||b.y>B+5){
+      var nb=newBubble(); b.x=nb.x; b.y=nb.y; b.vx=nb.vx; b.vy=nb.vy; b.r=nb.r; b.ph=nb.ph;
+    }
+  });
+
+  // graph
+  graphData.push({v:cur,t:tgt});
+  if(graphData.length>HIST) graphData.shift();
+
+  // labels
+  var sig=norm>0.04;
+  ['hDot','eDot'].forEach(function(id){
+    var d=document.getElementById(id);
+    d.className='dot'+(sig?' on':'');
+  });
+  document.getElementById('hTxt').textContent=sig?'ACTIVO':'APAGADO';
+  document.getElementById('eTxt').textContent=sig?'ACTIVO':'APAGADO';
+  document.getElementById('hTxt').style.color=sig?'#00d4aa':'#5a7080';
+  document.getElementById('eTxt').style.color=sig?'#00d4aa':'#5a7080';
+  document.getElementById('vRPM').textContent=Math.round(norm*1200)+' RPM';
+  document.getElementById('vFlow').textContent=(norm*10).toFixed(1)+' L/s';
+  document.getElementById('vI').textContent=(norm*1.2).toFixed(2)+' A';
+  document.getElementById('vB').textContent=Math.round(norm*500)+' mT';
+}
+
+// ─── LOOP ─────────────────────────────────────────────────────────────────
+function loop(ts){
+  var dt=lastTS?Math.min(50,ts-lastTS):16;
+  lastTS=ts;
+  step(dt);
+  drawH();
+  drawE();
+  drawG();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ─── CONTROLS ─────────────────────────────────────────────────────────────
+document.getElementById('pwrBtn').addEventListener('click',function(){
+  on=!on; tgt=on?100:0;
+  this.className='btn '+(on?'btn-off':'btn-on');
+  this.textContent=on?'⏹ APAGAR CIRCUITO':'⚡ ENCENDER CIRCUITO';
+});
+document.getElementById('spd').addEventListener('change',function(){
+  spd=parseFloat(this.value)||1;
+});
+</script>
+</body>
+</html>
