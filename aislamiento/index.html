@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Esquema de Circuito con Rele - Aislamiento Galvanico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #080c12;
+            --bg-secondary: #0f1520;
+            --fg: #e4ecf4;
+            --muted: #5a7189;
+            --control-color: #3b82f6;
+            --control-glow: rgba(59, 130, 246, 0.4);
+            --power-color: #f97316;
+            --power-glow: rgba(249, 115, 22, 0.4);
+            --danger-color: #ef4444;
+            --success-color: #22c55e;
+            --relay-blue: #2563eb;
+            --wire-control: #60a5fa;
+            --wire-power: #fb923c;
+            --card: rgba(15, 21, 32, 0.9);
+            --border: rgba(90, 113, 137, 0.2);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .bg-glow {
+            position: fixed;
+            inset: 0;
+            background: 
+                radial-gradient(ellipse 40% 30% at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 70%),
+                radial-gradient(ellipse 40% 30% at 80% 50%, rgba(249, 115, 22, 0.06) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Circuit container */
+        .circuit-container {
+            position: relative;
+            width: 100%;
+            max-width: 1100px;
+            height: 520px;
+            margin: 0 auto;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        /* Zone labels */
+        .zone-label {
+            position: absolute;
+            top: 16px;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            z-index: 10;
+        }
+
+        .zone-control {
+            left: 20px;
+            background: rgba(59, 130, 246, 0.15);
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .zone-isolation {
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(139, 92, 246, 0.15);
+            color: #c4b5fd;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .zone-power {
+            right: 20px;
+            background: rgba(249, 115, 22, 0.15);
+            color: #fdba74;
+            border: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        /* Wires SVG paths */
+        .wire-path {
+            fill: none;
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: all 0.3s ease;
+        }
+
+        .wire-control {
+            stroke: var(--wire-control);
+            filter: drop-shadow(0 0 4px var(--control-glow));
+        }
+
+        .wire-power {
+            stroke: var(--wire-power);
+            filter: drop-shadow(0 0 4px var(--power-glow));
+        }
+
+        /* Current flow animation */
+        .current-flow {
+            fill: none;
+            stroke-width: 3;
+            stroke-linecap: round;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .current-flow.active {
+            opacity: 1;
+        }
+
+        .flow-control {
+            stroke: #fbbf24;
+            filter: drop-shadow(0 0 6px #fbbf24);
+            stroke-dasharray: 12 20;
+            animation: flowDash 0.8s linear infinite;
+        }
+
+        .flow-power {
+            stroke: #fef08a;
+            filter: drop-shadow(0 0 8px #fef08a);
+            stroke-dasharray: 15 25;
+            animation: flowDash 0.6s linear infinite;
+        }
+
+        @keyframes flowDash {
+            to { stroke-dashoffset: -35; }
+        }
+
+        /* Components base styles */
+        .component {
+            position: absolute;
+            transition: all 0.3s ease;
+        }
+
+        /* Battery component */
+        .battery {
+            width: 70px;
+            height: 110px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .battery-body {
+            width: 56px;
+            height: 90px;
+            background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+            border-radius: 6px;
+            border: 2px solid #4b5563;
+            position: relative;
+            box-shadow: 
+                inset 0 2px 8px rgba(255,255,255,0.05),
+                0 4px 16px rgba(0,0,0,0.4);
+        }
+
+        .battery-terminal {
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 8px;
+            background: #6b7280;
+            border-radius: 2px 2px 0 0;
+        }
+
+        .battery-cells {
+            position: absolute;
+            inset: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
+        }
+
+        .battery-cell {
+            flex: 1;
+            background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+            border-radius: 2px;
+            margin: 2px 0;
+            transition: all 0.3s ease;
+        }
+
+        .battery-cell.low {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .battery-voltage {
+            position: absolute;
+            bottom: -28px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--success-color);
+        }
+
+        /* Switch component */
+        .switch-comp {
+            width: 60px;
+            height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .switch-base {
+            width: 40px;
+            height: 6px;
+            background: #4b5563;
+            border-radius: 3px;
+            position: relative;
+        }
+
+        .switch-lever {
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            width: 36px;
+            height: 4px;
+            background: linear-gradient(90deg, #d97706 0%, #f59e0b 100%);
+            border-radius: 2px;
+            transform-origin: bottom center;
+            transform: rotate(-35deg);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .switch-lever.on {
+            transform: rotate(35deg);
+        }
+
+        .switch-contact-left,
+        .switch-contact-right {
+            position: absolute;
+            top: -8px;
+            width: 8px;
+            height: 12px;
+            background: #6b7280;
+            border-radius: 2px;
+        }
+
+        .switch-contact-left { left: 2px; }
+        .switch-contact-right { right: 2px; }
+
+        /* Relay symbol */
+        .relay-symbol {
+            width: 120px;
+            height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .relay-coil-box {
+            width: 80px;
+            height: 55px;
+            border: 3px solid var(--relay-blue);
+            border-radius: 6px;
+            position: relative;
+            background: rgba(37, 99, 235, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .relay-coil-box.active {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+        }
+
+        .relay-coil-wire {
+            position: absolute;
+            left: 8px;
+            right: 8px;
+            height: 4px;
+            background: repeating-linear-gradient(
+                90deg,
+                #dc2626 0px,
+                #dc2626 4px,
+                transparent 4px,
+                transparent 8px
+            );
+            top: 50%;
+            transform: translateY(-50%);
+            border-radius: 2px;
+        }
+
+        .relay-coil-box.active .relay-coil-wire {
+            background: repeating-linear-gradient(
+                90deg,
+                #ef4444 0px,
+                #ef4444 4px,
+                transparent 4px,
+                transparent 8px
+            );
+            animation: coilGlow 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes coilGlow {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.4); }
+        }
+
+        .relay-pins {
+            display: flex;
+            justify-content: space-between;
+            width: 60px;
+            margin-top: 8px;
+        }
+
+        .relay-pin {
+            width: 8px;
+            height: 16px;
+            background: linear-gradient(180deg, #d97706 0%, #b45309 100%);
+            border-radius: 1px 1px 3px 3px;
+        }
+
+        .relay-contacts-area {
+            position: absolute;
+            bottom: -65px;
+            display: flex;
+            gap: 25px;
+        }
+
+        .relay-contact {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .contact-fixed {
+            width: 20px;
+            height: 6px;
+            background: #d97706;
+            border-radius: 2px;
+        }
+
+        .contact-movable {
+            width: 26px;
+            height: 5px;
+            background: #f59e0b;
+            border-radius: 2px;
+            position: absolute;
+            top: 0;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .contact-group-nc .contact-movable {
+            transform: translateY(0);
+        }
+
+        .contact-group-no .contact-movable {
+            transform: translateY(0);
+        }
+
+        .contact-group-nc.activated .contact-movable {
+            transform: translateY(14px);
+        }
+
+        .contact-group-no.activated .contact-movable {
+            transform: translateY(-14px);
+        }
+
+        .contact-group {
+            position: relative;
+            height: 24px;
+        }
+
+        .contact-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        /* Lamp component */
+        .lamp-component {
+            width: 80px;
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .lamp-bulb {
+            width: 60px;
+            height: 75px;
+            background: linear-gradient(180deg, #f5f5f4 0%, #d6d3d1 50%, #a8a29e 100%);
+            border-radius: 50% 50% 45% 45%;
+            position: relative;
+            transition: all 0.4s ease;
+            box-shadow: 
+                inset 0 -10px 20px rgba(0,0,0,0.1),
+                0 4px 16px rgba(0,0,0,0.3);
+        }
+
+        .lamp-bulb.on {
+            background: linear-gradient(180deg, #fef3c7 0%, #fcd34d 30%, #f59e0b 70%, #d97706 100%);
+            box-shadow: 
+                0 0 40px rgba(251, 191, 36, 0.6),
+                0 0 80px rgba(251, 146, 60, 0.4),
+                0 0 120px rgba(249, 115, 22, 0.2),
+                inset 0 -5px 15px rgba(217, 119, 6, 0.4);
+        }
+
+        .lamp-filament {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 28px;
+            border: 2px solid #78716c;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+        }
+
+        .lamp-filament::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 20px;
+            background: #78716c;
+        }
+
+        .lamp-filament::after {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 2px;
+            right: 2px;
+            height: 2px;
+            background: #78716c;
+            border-radius: 1px;
+        }
+
+        .lamp-bulb.on .lamp-filament {
+            border-color: #fbbf24;
+            box-shadow: 0 0 10px #fbbf24;
+        }
+
+        .lamp-bulb.on .lamp-filament::before,
+        .lamp-bulb.on .lamp-filament::after {
+            background: #fbbf24;
+            box-shadow: 0 0 8px #fbbf24;
+        }
+
+        .lamp-base {
+            width: 32px;
+            height: 22px;
+            background: linear-gradient(180deg, #52525b 0%, #27272a 100%);
+            border-radius: 3px 3px 5px 5px;
+            margin-top: -4px;
+        }
+
+        .lamp-screw {
+            width: 24px;
+            height: 14px;
+            background: repeating-linear-gradient(
+                180deg,
+                #3f3f46 0px,
+                #3f3f46 2px,
+                #27272a 2px,
+                #27272a 4px
+            );
+            border-radius: 0 0 4px 4px;
+        }
+
+        .lamp-label {
+            margin-top: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--power-color);
+        }
+
+        .lamp-specs {
+            font-size: 10px;
+            color: var(--muted);
+        }
+
+        /* AC source symbol */
+        .ac-source {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ac-circle {
+            width: 44px;
+            height: 44px;
+            border: 3px solid var(--power-color);
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ac-wave {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--power-color);
+        }
+
+        .ac-label {
+            position: absolute;
+            bottom: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--danger-color);
+            white-space: nowrap;
+        }
+
+        /* Isolation barrier */
+        .isolation-barrier {
+            position: absolute;
+            left: 50%;
+            top: 50px;
+            transform: translateX(-50%);
+            width: 4px;
+            height: calc(100% - 100px);
+            background: linear-gradient(
+                180deg,
+                transparent 0%,
+                rgba(139, 92, 246, 0.3) 10%,
+                rgba(139, 92, 246, 0.5) 50%,
+                rgba(139, 92, 246, 0.3) 90%,
+                transparent 100%
+            );
+            border-radius: 2px;
+            z-index: 5;
+        }
+
+        .isolation-barrier::before {
+            content: '';
+            position: absolute;
+            inset: -10px 0;
+            border-left: 2px dashed rgba(139, 92, 246, 0.4);
+        }
+
+        .isolation-text {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) rotate(-90deg);
+            font-size: 11px;
+            font-weight: 600;
+            color: #a78bfa;
+            letter-spacing: 3px;
+            white-space: nowrap;
+            text-transform: uppercase;
+        }
+
+        /* Ground symbols */
+        .ground-symbol {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .ground-line {
+            background: currentColor;
+            border-radius: 1px;
+        }
+
+        .ground-line:nth-child(1) { width: 24px; height: 2px; }
+        .ground-line:nth-child(2) { width: 16px; height: 2px; }
+        .ground-line:nth-child(3) { width: 8px; height: 2px; }
+
+        /* Control panel */
+        .control-panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Main toggle switch */
+        .main-switch {
+            position: relative;
+            width: 220px;
+            height: 60px;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border-radius: 30px;
+            border: 2px solid #334155;
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .main-switch:hover {
+            border-color: #475569;
+        }
+
+        .main-switch.active {
+            background: linear-gradient(180deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.08) 100%);
+            border-color: var(--success-color);
+            box-shadow: 0 0 30px rgba(34, 197, 94, 0.2);
+        }
+
+        .switch-track {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            right: 6px;
+            height: 48px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 24px;
+        }
+
+        .switch-thumb {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(145deg, #64748b 0%, #475569 100%);
+            border-radius: 50%;
+            box-shadow: 
+                0 4px 12px rgba(0,0,0,0.4),
+                inset 0 2px 4px rgba(255,255,255,0.1);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .main-switch.active .switch-thumb {
+            transform: translateX(160px);
+            background: linear-gradient(145deg, #4ade80 0%, #22c55e 100%);
+            box-shadow: 
+                0 4px 20px rgba(34, 197, 94, 0.5),
+                inset 0 2px 4px rgba(255,255,255,0.3);
+        }
+
+        .switch-icon {
+            width: 24px;
+            height: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .main-switch.active .switch-icon {
+            filter: drop-shadow(0 0 4px white);
+        }
+
+        .switch-labels {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            pointer-events: none;
+        }
+
+        .label-off {
+            left: 68px;
+            color: #94a3b8;
+        }
+
+        .label-on {
+            right: 62px;
+            color: var(--success-color);
+            opacity: 0;
+        }
+
+        .main-switch.active .label-off { opacity: 0; }
+        .main-switch.active .label-on { opacity: 1; }
+
+        /* Status indicators */
+        .status-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.3);
+            font-size: 13px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .status-dot.off {
+            background: #4b5563;
+        }
+
+        .status-dot.on {
+            animation: statusPulse 1.2s ease-in-out infinite;
+        }
+
+        .status-dot.control-on {
+            background: var(--control-color);
+            box-shadow: 0 0 10px var(--control-glow);
+        }
+
+        .status-dot.power-on {
+            background: var(--power-color);
+            box-shadow: 0 0 10px var(--power-glow);
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(0.9); }
+        }
+
+        /* Info cards */
+        .info-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            transition: all 0.3s ease;
+        }
+
+        .info-card:hover {
+            border-color: rgba(139, 92, 246, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Voltage selector */
+        .voltage-selector {
+            display: flex;
+            gap: 8px;
+        }
+
+        .voltage-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            background: rgba(59, 130, 246, 0.1);
+            color: #93c5fd;
+        }
+
+        .voltage-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        .voltage-btn.active {
+            background: rgba(59, 130, 246, 0.25);
+            border-color: var(--control-color);
+            color: #bfdbfe;
+        }
+
+        /* Entrance animations */
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in {
+            animation: fadeSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            opacity: 0;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .circuit-container {
+                height: 650px;
+                transform: scale(0.85);
+                transform-origin: top center;
+            }
+            
+            .zone-label {
+                font-size: 11px;
+                padding: 6px 14px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .circuit-container {
+                height: 750px;
+                transform: scale(0.65);
+            }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-8 animate-in">
+            <h1 class="text-2xl md:text-4xl lg:text-5xl font-bold mb-3 tracking-tight">
+                Circuito con Rele - Aislamiento Galvanico
+            </h1>
+            <p class="text-base md:text-lg" style="color: var(--muted);">
+                Control de alta tension mediante senal de baja tension
+            </p>
+        </header>
+
+        <!-- Circuit Diagram -->
+        <div class="circuit-container animate-in delay-1" id="circuitContainer">
+            
+            <!-- Zone Labels -->
+            <div class="zone-label zone-control">Circuito de Control (DC)</div>
+            <div class="zone-label zone-isolation">Aislamiento Galvanico</div>
+            <div class="zone-label zone-power">Circuito de Carga (AC)</div>
+
+            <!-- Isolation Barrier -->
+            <div class="isolation-barrier">
+                <span class="isolation-text">AISLADO</span>
+            </div>
+
+            <!-- SVG for wires -->
+            <svg class="absolute inset-0 w-full h-full" style="z-index: 1;">
+                <defs>
+                    <filter id="glowControl">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                    <filter id="glowPower">
+                        <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+
+                <!-- Control Circuit Wires -->
+                <!-- Battery positive to Switch -->
+                <path id="wireBattSwitch" class="wire-path wire-control" d="M 155 145 L 155 200 L 230 200"/>
+                
+                <!-- Switch to Coil pin 1 -->
+                <path id="wireSwitchCoil1" class="wire-path wire-control" d="M 290 200 L 420 200 L 420 175"/>
+                
+                <!-- Coil pin 2 to Battery negative -->
+                <path id="wireCoil2Batt" class="wire-path wire-control" d="M 480 175 L 480 320 L 155 320 L 155 270"/>
+
+                <!-- Current flow on control side -->
+                <path id="flowControl1" class="current-flow flow-control" d="M 155 145 L 155 200 L 230 200"/>
+                <path id="flowControl2" class="current-flow flow-control" d="M 290 200 L 420 200 L 420 175"/>
+                <path id="flowControl3" class="current-flow flow-control" d="M 480 175 L 480 320 L 155 320 L 155 270"/>
+
+                <!-- Power Circuit Wires -->
+                <!-- AC source to NC contact -->
+                <path id="wireAC_NC" class="wire-path wire-power" d="M 720 150 L 720 210 L 640 210"/>
+                
+                <!-- COM contact to Lamp -->
+                <path id="wireCOM_Lamp" class="wire-path wire-power" d="M 595 280 L 595 330 L 850 330 L 850 260"/>
+                
+                <!-- Lamp to AC return -->
+                <path id="wireLamp_AC" class="wire-path wire-power" d="M 900 260 L 900 400 L 720 400 L 720 210"/>
+
+                <!-- Current flow on power side -->
+                <path id="flowPower1" class="current-flow flow-power" d="M 720 150 L 720 210 L 640 210"/>
+                <path id="flowPower2" class="current-flow flow-power" d="M 595 280 L 595 330 L 850 330 L 850 260"/>
+                <path id="flowPower3" class="current-flow flow-power" d="M 900 260 L 900 400 L 720 400 L 720 210"/>
+            </svg>
+
+            <!-- BATTERY - Left side -->
+            <div class="component battery" style="left: 120px; top: 130px;">
+                <div class="battery-body">
+                    <div class="battery-terminal"></div>
+                    <div class="battery-cells">
+                        <div class="battery-cell" id="cell1"></div>
+                        <div class="battery-cell" id="cell2"></div>
+                        <div class="battery-cell" id="cell3"></div>
+                    </div>
+                </div>
+                <div class="battery-voltage mono" id="batteryVoltage">12V DC</div>
+            </div>
+
+            <!-- SWITCH - Control side -->
+            <div class="component switch-comp" style="left: 240px; top: 165px;" id="switchComponent">
+                <div class="switch-base">
+                    <div class="switch-contact-left"></div>
+                    <div class="switch-contact-right"></div>
+                    <div class="switch-lever" id="switchLever"></div>
+                </div>
+            </div>
+
+            <!-- RELAY SYMBOL - Center -->
+            <div class="component relay-symbol" style="left: 410px; top: 140px;">
+                <div class="relay-coil-box" id="relayCoilBox">
+                    <div class="relay-coil-wire"></div>
+                </div>
+                <div class="relay-pins">
+                    <div class="relay-pin"></div>
+                    <div class="relay-pin"></div>
+                </div>
+                
+                <!-- Contacts below -->
+                <div class="relay-contacts-area">
+                    <div class="relay-contact contact-group-nc" id="contactGroupNC">
+                        <div class="contact-group">
+                            <div class="contact-fixed"></div>
+                            <div class="contact-movable"></div>
+                        </div>
+                        <span class="contact-label mono">NC</span>
+                    </div>
+                    
+                    <div class="relay-contact contact-group-no" id="contactGroupNO">
+                        <div class="contact-group">
+                            <div class="contact-fixed"></div>
+                            <div class="contact-movable"></div>
+                        </div>
+                        <span class="contact-label mono">NO</span>
+                    </div>
+                    
+                    <div class="relay-contact">
+                        <div class="contact-fixed" style="background: #60a5fa;"></div>
+                        <span class="contact-label mono">COM</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AC SOURCE - Right side -->
+            <div class="component ac-source" style="left: 690px; top: 105px;">
+                <div class="ac-circle">
+                    <span class="ac-wave">~</span>
+                </div>
+                <div class="ac-label mono">220V CA</div>
+            </div>
+
+            <!-- LAMP - Right side -->
+            <div class="component lamp-component" style="left: 835px; top: 185px;" id="lampComponent">
+                <div class="lamp-bulb" id="lampBulb">
+                    <div class="lamp-filament"></div>
+                </div>
+                <div class="lamp-base"></div>
+                <div class="lamp-screw"></div>
+                <div class="lamp-label">LAMPARA</div>
+                <div class="lamp-specs mono">60W / 220V</div>
+            </div>
+
+            <!-- Ground symbol for AC -->
+            <div class="component ground-symbol" style="left: 705px; top: 385px; color: var(--power-color);">
+                <div class="ground-line"></div>
+                <div class="ground-line"></div>
+                <div class="ground-line"></div>
+            </div>
+
+            <!-- Ground symbol for Battery -->
+            <div class="component ground-symbol" style="left: 140px; top: 305px; color: var(--control-color);">
+                <div class="ground-line"></div>
+                <div class="ground-line"></div>
+                <div class="ground-line"></div>
+            </div>
+        </div>
+
+        <!-- Controls Section -->
+        <div class="grid lg:grid-cols-3 gap-6 mt-8">
+            
+            <!-- Main Power Toggle -->
+            <div class="control-panel p-6 animate-in delay-2 lg:col-span-2">
+                <div class="flex flex-col md:flex-row items-center gap-8">
+                    
+                    <!-- Main Switch -->
+                    <div class="flex flex-col items-center gap-4">
+                        <h3 class="font-semibold text-lg flex items-center gap-2">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                                <line x1="12" y1="2" x2="12" y2="12"/>
+                            </svg>
+                            Interruptor Principal
+                        </h3>
+                        
+                        <button class="main-switch" id="mainPowerSwitch" role="switch" aria-checked="false" aria-label="Activar o desactivar el circuito">
+                            <div class="switch-track"></div>
+                            <div class="switch-thumb">
+                                <svg class="switch-icon" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5">
+                                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                                    <line x1="12" y1="2" x2="12" y2="12"/>
+                                </svg>
+                            </div>
+                            <span class="switch-labels label-off">OFF</span>
+                            <span class="switch-labels label-on">ON</span>
+                        </button>
+                    </div>
+
+                    <!-- Voltage Selector -->
+                    <div class="flex flex-col items-center gap-4">
+                        <h3 class="font-semibold text-lg flex items-center gap-2">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="7" width="20" height="14" rx="2"/>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                            </svg>
+                            Tension de Control
+                        </h3>
+                        
+                        <div class="voltage-selector">
+                            <button class="voltage-btn" data-voltage="5" data-cells="1">5V DC</button>
+                            <button class="voltage-btn active" data-voltage="12" data-cells="3">12V DC</button>
+                        </div>
+                    </div>
+
+                    <!-- Status Indicators -->
+                    <div class="flex flex-col items-center gap-4">
+                        <h3 class="font-semibold text-lg flex items-center gap-2">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v6l4 2"/>
+                            </svg>
+                            Estado del Sistema
+                        </h3>
+                        
+                        <div class="status-row">
+                            <div class="status-item">
+                                <span class="status-dot off" id="dotControl"></span>
+                                <span>Control</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-dot off" id="dotPower"></span>
+                                <span>Carga</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-dot off" id="dotRelay"></span>
+                                <span>Rele</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Panel -->
+            <div class="space-y-4 animate-in delay-3">
+                <div class="info-card">
+                    <h4 class="font-semibold mb-3 flex items-center gap-2" style="color: var(--control-color);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                        </svg>
+                        Circuito de Control
+                    </h4>
+                    <ul class="text-sm space-y-1" style="color: var(--muted);">
+                        <li>- Bateria: <strong id="specBattery">12V DC</strong></li>
+                        <li>- Corriente bobina: ~16mA</li>
+                        <li>- Potencia consumida: ~192mW</li>
+                        <li>- Funcion: Activar electroiman</li>
+                    </ul>
+                </div>
+
+                <div class="info-card">
+                    <h4 class="font-semibold mb-3 flex items-center gap-2" style="color: var(--power-color);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                        Circuito de Carga
+                    </h4>
+                    <ul class="text-sm space-y-1" style="color: var(--muted);">
+                        <li>- Red electrica: <strong>220V CA</strong></li>
+                        <li>- Carga maxima: 10A / 2500W</li>
+                        <li>- Aislamiento: 4000VAC min</li>
+                        <li>- Funcion: Alimentar lampara</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Explanation Cards -->
+        <div class="grid md:grid-cols-3 gap-6 mt-8 animate-in delay-4">
+            <div class="info-card p-6">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style="background: rgba(59, 130, 246, 0.15);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--control-color)" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M9 3v18M15 3v18"/>
+                    </svg>
+                </div>
+                <h4 class="font-semibold mb-2">Estado REPOSO</h4>
+                <p class="text-sm" style="color: var(--muted);">
+                    Sin corriente en la bobina. El contacto COM esta conectado a <strong style="color: var(--fg)">NC (Normalmente Cerrado)</strong>. La lampara permanece apagada porque NO esta conectada al circuito.
+                </p>
+            </div>
+
+            <div class="info-card p-6">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style="background: rgba(139, 92, 246, 0.15);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2">
+                        <path d="M12 2v20M2 12h20"/>
+                        <circle cx="12" cy="12" r="4"/>
+                    </svg>
+                </div>
+                <h4 class="font-semibold mb-2">Aislamiento Galvanico</h4>
+                <p class="text-sm" style="color: var(--muted);">
+                    No existe conexion electrica entre los dos circuitos. La unica union es mecanica/magnetica a traves del rele. Esto protege el circuito de control de las altas tensiones.
+                </p>
+            </div>
+
+            <div class="info-card p-6">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style="background: rgba(249, 115, 22, 0.15);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--power-color)" stroke-width="2">
+                        <path d="M9 18h6M10 22h4"/>
+                        <path d="M12 2v1M12 7a5 5 0 0 1 5 5c0 2-1 3.5-2.5 4.5"/>
+                        <path d="M12 7a5 5 0 0 0-5 5c0 2 1 3.5 2.5 4.5"/>
+                    </svg>
+                </div>
+                <h4 class="font-semibold mb-2">Estado ACTIVADO</h4>
+                <p class="text-sm" style="color: var(--muted);">
+                    Con corriente en bobina, el electroiman atrae la armadura. El contacto COM cambia a <strong style="color: var(--fg)">NO (Normalmente Abierto)</strong>, completando el circuito y encendiendo la lampara.
+                </p>
+            </div>
+        </div>
+
+        <!-- Safety Notice -->
+        <div class="mt-8 p-5 rounded-xl animate-in delay-5" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2);">
+            <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background: rgba(239, 68, 68, 0.15);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-1" style="color: #fca5a5;">Advertencia de Seguridad</h4>
+                    <p class="text-sm" style="color: var(--muted);">
+                        Este esquema es educativo. En aplicaciones reales con 220V CA, siempre trabaja con circuitos desenergizados, usa protecciones adecuadas (fusibles, disyuntores), y respeta las normativas locales de instalacion electrica. El aislamiento galvanico del rele protege el circuito de control, pero no elimina todos los riesgos.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <footer class="text-center mt-10 pb-6" style="color: var(--muted);">
+            <p class="text-sm">Esquema de circuito con rele - Demostracion de aislamiento galvanico</p>
+        </footer>
+    </div>
+
+    <script>
+        // ============================================
+        // STATE INITIALIZATION (BEFORE ANYTHING)
+        // ============================================
+        
+        const circuitState = {
+            isPowered: false,
+            controlVoltage: 12,
+            isAnimating: false
+        };
+
+        // ============================================
+        // DOM ELEMENTS
+        // ============================================
+        
+        const elements = {
+            mainPowerSwitch: document.getElementById('mainPowerSwitch'),
+            switchLever: document.getElementById('switchLever'),
+            relayCoilBox: document.getElementById('relayCoilBox'),
+            contactGroupNC: document.getElementById('contactGroupNC'),
+            contactGroupNO: document.getElementById('contactGroupNO'),
+            lampBulb: document.getElementById('lampBulb'),
+            batteryVoltage: document.getElementById('batteryVoltage'),
+            specBattery: document.getElementById('specBattery'),
+            dotControl: document.getElementById('dotControl'),
+            dotPower: document.getElementById('dotPower'),
+            dotRelay: document.getElementById('dotRelay'),
+            voltageBtns: document.querySelectorAll('.voltage-btn'),
+            batteryCells: [
+                document.getElementById('cell1'),
+                document.getElementById('cell2'),
+                document.getElementById('cell3')
+            ],
+            // Flow animations
+            flowControlPaths: [
+                document.getElementById('flowControl1'),
+                document.getElementById('flowControl2'),
+                document.getElementById('flowControl3')
+            ],
+            flowPowerPaths: [
+                document.getElementById('flowPower1'),
+                document.getElementById('flowPower2'),
+                document.getElementById('flowPower3')
+            ]
+        };
+
+        // ============================================
+        // TOGGLE POWER FUNCTION
+        // ============================================
+        
+        function togglePower() {
+            if (circuitState.isAnimating) return;
+            
+            circuitState.isPowered = !circuitState.isPowered;
+            circuitState.isAnimating = true;
+            
+            updateCircuitState();
+            
+            setTimeout(() => {
+                circuitState.isAnimating = false;
+            }, 450);
+        }
+
+        // ============================================
+        // UPDATE CIRCUIT STATE
+        // ============================================
+        
+        function updateCircuitState() {
+            const powered = circuitState.isPowered;
+            
+            // Update main switch UI
+            elements.mainPowerSwitch.classList.toggle('active', powered);
+            elements.mainPowerSwitch.setAttribute('aria-checked', powered.toString());
+            
+            // Update manual switch lever
+            elements.switchLever.classList.toggle('on', powered);
+            
+            // Update relay coil appearance
+            elements.relayCoilBox.classList.toggle('active', powered);
+            
+            // Update contact positions
+            elements.contactGroupNC.classList.toggle('activated', powered);
+            elements.contactGroupNO.classList.toggle('activated', powered);
+            
+            // Update lamp state
+            elements.lampBulb.classList.toggle('on', powered);
+            
+            // Update status dots
+            elements.dotControl.className = `status-dot ${powered ? 'on control-on' : 'off'}`;
+            elements.dotPower.className = `status-dot ${powered ? 'on power-on' : 'off'}`;
+            elements.dotRelay.className = `status-dot ${powered ? 'on' : 'off'}`;
+            
+            // Update current flow animations
+            elements.flowControlPaths.forEach(path => {
+                path.classList.toggle('active', powered);
+            });
+            
+            elements.flowPowerPaths.forEach(path => {
+                path.classList.toggle('active', powered);
+            });
+        }
+
+        // ============================================
+        // VOLTAGE SELECTION
+        // ============================================
+        
+        function setVoltage(voltage, cells) {
+            circuitState.controlVoltage = voltage;
+            
+            // Update button states
+            elements.voltageBtns.forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.voltage) === voltage);
+            });
+            
+            // Update battery display
+            elements.batteryVoltage.textContent = `${voltage}V DC`;
+            elements.specBattery.textContent = `${voltage}V DC`;
+            
+            // Update battery cells visualization
+            elements.batteryCells.forEach((cell, index) => {
+                if (index < cells) {
+                    cell.classList.remove('low');
+                } else {
+                    cell.classList.add('low');
+                }
+            });
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+        
+        function initEventListeners() {
+            // Main power switch
+            elements.mainPowerSwitch.addEventListener('click', togglePower);
+            elements.mainPowerSwitch.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    togglePower();
+                }
+            });
+            
+            // Voltage selection buttons
+            elements.voltageBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const voltage = parseInt(btn.dataset.voltage);
+                    const cells = parseInt(btn.dataset.cells);
+                    setVoltage(voltage, cells);
+                });
+            });
+            
+            // Click on switch component also toggles
+            document.getElementById('switchComponent').addEventListener('click', togglePower);
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        
+        function init() {
+            // Set initial state
+            updateCircuitState();
+            setVoltage(12, 3);
+            
+            // Setup events
+            initEventListeners();
+            
+            console.log('Circuito con relé inicializado correctamente.');
+        }
+
+        // Start when ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>
