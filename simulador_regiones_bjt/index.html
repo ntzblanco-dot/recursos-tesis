@@ -1,0 +1,210 @@
+
+<h2 class="sr-only">Simulador de regiones de operación del transistor BJT: mueve el punto Q entre corte, activa, saturación y ruptura</h2>
+
+<style>
+  .sw { padding: 1.5rem; background: #1a1a1a; border-radius: 12px; font-family: var(--font-sans); box-sizing: border-box; }
+  .stitle { font-size: 12px; font-weight: 500; color: #9a9890; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 2px; }
+  .sbig { font-size: 24px; font-weight: 500; color: #e8e6e0; margin: 0 0 2px; }
+  .ssub { font-size: 13px; color: #9a9890; margin-bottom: 1.5rem; }
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 1.4rem; }
+  .mc { background: #242424; border-radius: 8px; padding: 10px 14px; border: 0.5px solid rgba(255,255,255,0.07); }
+  .mc-l { font-size: 11px; color: #9a9890; margin-bottom: 3px; }
+  .mc-v { font-size: 18px; font-weight: 500; }
+  .mc-u { font-size: 11px; color: #9a9890; }
+  .ctrl { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }
+  .ctrl-lbl { font-size: 13px; color: #9a9890; min-width: 96px; }
+  .ctrl input[type=range] { flex: 1; }
+  .ctrl-out { font-size: 13px; font-weight: 500; color: #e8e6e0; min-width: 68px; text-align: right; }
+  .cw { position: relative; height: 300px; margin: 1rem 0 0.5rem; }
+  .leg { display: flex; gap: 14px; margin-top: 8px; flex-wrap: wrap; }
+  .li { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #9a9890; }
+  .ld { width: 16px; height: 10px; border-radius: 2px; }
+  .region-panel { margin-top: 1rem; border-radius: 8px; padding: 12px 16px; border-left: 3px solid; border-radius: 0; transition: background 0.3s; }
+  .region-panel .rp-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .region-panel .rp-desc { font-size: 12px; color: #9a9890; line-height: 1.6; }
+  .warn-icon { font-size: 16px; vertical-align: -2px; margin-right: 4px; }
+</style>
+
+<div class="sw">
+  <div class="stitle">Simulador BJT · Regiones</div>
+  <div class="sbig">Corte · Activa · Saturación · Ruptura</div>
+  <div class="ssub">Controla V<sub>CC</sub>, R<sub>C</sub> y la corriente de base I<sub>B</sub> para mover el Punto Q entre todas las regiones. β = 100, V<sub>BR</sub> = 30 V.</div>
+
+  <div class="cards">
+    <div class="mc">
+      <div class="mc-l">I<sub>C</sub></div>
+      <div class="mc-v" id="ic-val" style="color:#7F77DD">—</div>
+      <div class="mc-u">mA</div>
+    </div>
+    <div class="mc">
+      <div class="mc-l">V<sub>CE</sub></div>
+      <div class="mc-v" id="vce-val" style="color:#1D9E75">—</div>
+      <div class="mc-u">V</div>
+    </div>
+    <div class="mc">
+      <div class="mc-l">I<sub>B</sub></div>
+      <div class="mc-v" id="ib-val" style="color:#EF9F27">—</div>
+      <div class="mc-u">µA</div>
+    </div>
+    <div class="mc">
+      <div class="mc-l">Estado</div>
+      <div class="mc-v" id="estado-val" style="font-size:13px; padding-top:3px">—</div>
+      <div class="mc-u" id="estado-icono"></div>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <span class="ctrl-lbl">V<sub>CC</sub> (V)</span>
+    <input type="range" id="vcc" min="2" max="28" step="1" value="12" style="accent-color:#1D9E75">
+    <span class="ctrl-out" id="vcc-out">12 V</span>
+  </div>
+  <div class="ctrl">
+    <span class="ctrl-lbl">R<sub>C</sub> (kΩ)</span>
+    <input type="range" id="rc" min="0.2" max="5" step="0.1" value="1" style="accent-color:#1D9E75">
+    <span class="ctrl-out" id="rc-out">1.0 kΩ</span>
+  </div>
+  <div class="ctrl">
+    <span class="ctrl-lbl">I<sub>B</sub> (µA)</span>
+    <input type="range" id="ib" min="0" max="200" step="1" value="50" style="accent-color:#7F77DD">
+    <span class="ctrl-out" id="ib-out">50 µA</span>
+  </div>
+
+  <div class="cw">
+    <canvas id="rChart" role="img" aria-label="Gráfica de regiones de operación del BJT con recta de carga y punto Q"></canvas>
+  </div>
+
+  <div class="leg">
+    <div class="li"><div class="ld" style="background:#1D9E75"></div> Recta de carga</div>
+    <div class="li"><div class="ld" style="background:rgba(55,138,221,0.25)"></div> Zona activa</div>
+    <div class="li"><div class="ld" style="background:rgba(239,159,39,0.3)"></div> Saturación</div>
+    <div class="li"><div class="ld" style="background:rgba(226,75,74,0.25)"></div> Ruptura</div>
+    <div class="li"><div class="ld" style="background:#7F77DD; width:10px; height:10px; border-radius:50%"></div> Punto Q</div>
+  </div>
+
+  <div class="region-panel" id="region-panel">
+    <div class="rp-title" id="rp-title"></div>
+    <div class="rp-desc" id="rp-desc"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const BETA = 100, VCE_SAT = 0.2, VBR = 30;
+let chart;
+
+const regions = {
+  corte:     { label: 'Corte', color: '#444441', border: '#888780', desc: 'IB = 0 → el transistor no conduce. Actúa como interruptor abierto. Toda VCC cae sobre el transistor.', icono: '○ Abierto' },
+  activa:    { label: 'Activa', color: '#185FA5', border: '#378ADD', desc: 'Zona lineal: IC = β × IB. Ideal para amplificación. El punto Q puede moverse libremente sobre la recta de carga.', icono: '◈ Amplifica' },
+  saturacion:{ label: 'Saturación', color: '#854F0B', border: '#EF9F27', desc: 'IC ya no puede aumentar aunque IB suba. VCE ≈ 0.2 V. Actúa como interruptor cerrado.', icono: '● Cerrado' },
+  ruptura:   { label: '⚠ Ruptura', color: '#A32D2D', border: '#E24B4A', desc: '¡Peligro! VCE supera el voltaje de ruptura (VBR = 30 V). El transistor puede dañarse permanentemente. ¡No hagas esto en un circuito real!', icono: '✕ Dañado' }
+};
+
+function getRegion(IC, IC_sat, VCE, VCC) {
+  if (VCE >= VBR) return 'ruptura';
+  if (IC < IC_sat * 0.02 && IC < 0.01e-3) return 'corte';
+  if (VCE <= VCE_SAT + 0.05 || IC >= IC_sat * 0.95) return 'saturacion';
+  return 'activa';
+}
+
+function update() {
+  const VCC = parseFloat(document.getElementById('vcc').value);
+  const RC  = parseFloat(document.getElementById('rc').value) * 1000;
+  const IB  = parseFloat(document.getElementById('ib').value) * 1e-6;
+
+  document.getElementById('vcc-out').textContent = VCC + ' V';
+  document.getElementById('rc-out').textContent = (RC/1000).toFixed(1) + ' kΩ';
+  document.getElementById('ib-out').textContent = Math.round(IB*1e6) + ' µA';
+
+  const IC_active = BETA * IB;
+  const IC_sat = VCC / RC;
+  const IC = Math.min(IC_active, IC_sat);
+  const VCE = Math.max(VCE_SAT, VCC - IC * RC);
+
+  const IC_mA  = +(IC * 1000).toFixed(3);
+  const VCE_v  = +VCE.toFixed(2);
+  const IB_uA  = Math.round(IB * 1e6);
+  const Isat_mA = +(IC_sat * 1000).toFixed(2);
+
+  document.getElementById('ic-val').textContent  = IC_mA;
+  document.getElementById('vce-val').textContent = VCE_v;
+  document.getElementById('ib-val').textContent  = IB_uA;
+
+  const rKey = getRegion(IC, IC_sat, VCE, VCC);
+  const reg = regions[rKey];
+  document.getElementById('estado-val').textContent  = reg.label;
+  document.getElementById('estado-val').style.color  = reg.border;
+  document.getElementById('estado-icono').textContent = reg.icono;
+
+  const panel = document.getElementById('region-panel');
+  panel.style.borderColor   = reg.border;
+  panel.style.background    = reg.color + '22';
+  document.getElementById('rp-title').textContent = reg.label;
+  document.getElementById('rp-title').style.color = reg.border;
+  document.getElementById('rp-desc').textContent  = reg.desc;
+
+  const xMax = Math.max(VCC * 1.12, VBR + 2);
+  const yMax = Isat_mA * 1.2;
+
+  const loadLine = [{ x: 0, y: Isat_mA }, { x: VCC, y: 0 }];
+  const qPoint   = [{ x: VCE_v, y: IC_mA }];
+
+  const satZone    = [{ x: 0, y: yMax }, { x: VCE_SAT, y: yMax }, { x: VCE_SAT, y: 0 }, { x: 0, y: 0 }];
+  const activeZone = [{ x: VCE_SAT, y: yMax }, { x: VBR, y: yMax }, { x: VBR, y: 0 }, { x: VCE_SAT, y: 0 }];
+  const brkZone    = [{ x: VBR, y: yMax }, { x: xMax, y: yMax }, { x: xMax, y: 0 }, { x: VBR, y: 0 }];
+
+  if (!chart) {
+    const ctx = document.getElementById('rChart').getContext('2d');
+    chart = new Chart(ctx, {
+      type: 'scatter',
+      data: {
+        datasets: [
+          { label: 'sat-zone',    data: satZone,    type:'line', borderColor:'transparent', backgroundColor:'rgba(239,159,39,0.18)',  fill:true, pointRadius:0, tension:0, order:5 },
+          { label: 'active-zone', data: activeZone, type:'line', borderColor:'transparent', backgroundColor:'rgba(55,138,221,0.12)',   fill:true, pointRadius:0, tension:0, order:5 },
+          { label: 'brk-zone',    data: brkZone,    type:'line', borderColor:'transparent', backgroundColor:'rgba(226,75,74,0.18)',    fill:true, pointRadius:0, tension:0, order:5 },
+          { label: 'Recta de carga', data: loadLine, type:'line', borderColor:'#1D9E75', borderWidth:2.5, pointRadius:0, fill:false, tension:0, order:2 },
+          { label: 'Punto Q',     data: qPoint, type:'scatter', backgroundColor:'#7F77DD', borderColor:'#e8e6e0', borderWidth:2, pointRadius:10, pointHoverRadius:12, order:1 }
+        ]
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            type: 'linear', min: 0, max: xMax,
+            title: { display:true, text:'VCE (V)', color:'#9a9890', font:{size:12} },
+            grid: { color:'rgba(255,255,255,0.06)' },
+            ticks: { color:'#9a9890' }
+          },
+          y: {
+            min: 0, max: yMax,
+            title: { display:true, text:'IC (mA)', color:'#9a9890', font:{size:12} },
+            grid: { color:'rgba(255,255,255,0.06)' },
+            ticks: { color:'#9a9890' }
+          }
+        },
+        plugins: {
+          legend: { display:false },
+          tooltip: {
+            callbacks: {
+              label: item => item.datasetIndex === 4 ? `Q: VCE=${item.parsed.x} V, IC=${item.parsed.y} mA` : null
+            }
+          }
+        }
+      }
+    });
+  } else {
+    chart.data.datasets[0].data = satZone;
+    chart.data.datasets[1].data = activeZone;
+    chart.data.datasets[2].data = brkZone;
+    chart.data.datasets[3].data = loadLine;
+    chart.data.datasets[4].data = qPoint;
+    chart.options.scales.x.max = xMax;
+    chart.options.scales.y.max = yMax;
+    chart.update('none');
+  }
+}
+
+['vcc','rc','ib'].forEach(id => document.getElementById(id).addEventListener('input', update));
+update();
+</script>
