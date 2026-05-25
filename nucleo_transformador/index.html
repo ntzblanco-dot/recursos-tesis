@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anatomia del Nucleo - Transformador Acorazado vs Toroidal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #080c12;
+            --bg-secondary: #0f1520;
+            --fg: #e4ecf4;
+            --muted: #5a7189;
+            --accent-shell: #3b82f6;
+            --accent-toroid: #10b981;
+            --flux-color: #fbbf24;
+            --flux-glow: rgba(251, 191, 36, 0.5);
+            --leakage-color: #ef4444;
+            --leakage-glow: rgba(239, 68, 68, 0.4);
+            --core-gray: #4a5568;
+            --core-dark: #374151;
+            --card: rgba(15, 21, 32, 0.9);
+            --border: rgba(90, 113, 137, 0.2);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        .bg-pattern {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .bg-glow {
+            position: fixed;
+            inset: 0;
+            background: 
+                radial-gradient(ellipse 35% 30% at 25% 50%, rgba(59, 130, 246, 0.07) 0%, transparent 70%),
+                radial-gradient(ellipse 35% 30% at 75% 50%, rgba(16, 185, 129, 0.07) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Core visualization containers */
+        .core-display {
+            position: relative;
+            width: 100%;
+            height: 380px;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        /* Shell type core (E-I) */
+        .shell-core-container {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 800px;
+        }
+
+        .shell-core-3d {
+            transform-style: preserve-3d;
+            transform: rotateX(-10deg) rotateY(-15deg);
+        }
+
+        /* E-Core shape */
+        .e-core {
+            position: relative;
+            width: 200px;
+            height: 180px;
+        }
+
+        .e-core-part {
+            position: absolute;
+            background: linear-gradient(145deg, #6b7280 0%, #4b5563 50%, #374151 100%);
+            border-radius: 4px;
+            box-shadow: 
+                inset 2px 2px 8px rgba(255,255,255,0.08),
+                inset -2px -2px 8px rgba(0,0,0,0.3),
+                4px 6px 16px rgba(0,0,0,0.4);
+        }
+
+        .e-core-backbone {
+            width: 28px;
+            height: 180px;
+            left: 0;
+            top: 0;
+        }
+
+        .e-core-top-arm {
+            width: 172px;
+            height: 28px;
+            left: 0;
+            top: 0;
+        }
+
+        .e-core-bottom-arm {
+            width: 172px;
+            height: 28px;
+            left: 0;
+            bottom: 0;
+        }
+
+        .e-core-middle-arm {
+            width: 80px;
+            height: 28px;
+            left: 0;
+            top: 76px;
+        }
+
+        /* I-Core shape */
+        .i-core {
+            position: absolute;
+            right: -24px;
+            top: 0;
+            width: 22px;
+            height: 180px;
+            background: linear-gradient(145deg, #6b7280 0%, #4b5563 50%, #374151 100%);
+            border-radius: 2px;
+            box-shadow: 
+                inset 2px 2px 6px rgba(255,255,255,0.08),
+                3px 5px 14px rgba(0,0,0,0.4);
+        }
+
+        /* Winding on shell core */
+        .shell-winding {
+            position: absolute;
+            left: 34px;
+            top: 34px;
+            width: 60px;
+            height: 112px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
+            z-index: 5;
+        }
+
+        .winding-turn {
+            width: 54px;
+            height: 5px;
+            background: linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #b91c1c 100%);
+            border-radius: 2px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        /* Toroidal core container */
+        .toroid-core-container {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 800px;
+        }
+
+        .toroid-core-3d {
+            transform-style: preserve-3d;
+            transform: rotateX(-15deg) rotateY(-20deg);
+        }
+
+        /* Torus shape using CSS */
+        .torus-shape {
+            position: relative;
+            width: 200px;
+            height: 200px;
+        }
+
+        .torus-outer {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: conic-gradient(
+                from 0deg,
+                #6b7280 0deg,
+                #9ca3af 45deg,
+                #6b7280 90deg,
+                #4b5563 135deg,
+                #6b7280 180deg,
+                #9ca3af 225deg,
+                #6b7280 270deg,
+                #4b5563 315deg,
+                #6b7280 360deg
+            );
+            box-shadow: 
+                inset 0 0 40px rgba(0,0,0,0.5),
+                0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .torus-inner {
+            position: absolute;
+            inset: 55px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            box-shadow: 
+                inset 0 0 30px rgba(0,0,0,0.8),
+                0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* Toroidal winding */
+        .toroid-winding {
+            position: absolute;
+            inset: 65px;
+            border-radius: 50%;
+            border: 18px solid transparent;
+            background: 
+                repeating-conic-gradient(
+                    from 0deg,
+                    #dc2626 0deg 8deg,
+                    transparent 8deg 12deg
+                );
+            mask: radial-gradient(farthest-side, transparent calc(100% - 12px), black calc(100% - 11px));
+            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 12px), black calc(100% - 11px));
+            opacity: 0.9;
+        }
+
+        /* Flux lines SVG overlay */
+        .flux-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .flux-line {
+            fill: none;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .flux-line.visible {
+            opacity: 1;
+        }
+
+        .flux-main {
+            stroke: var(--flux-color);
+            filter: drop-shadow(0 0 6px var(--flux-glow));
+        }
+
+        .flux-leak {
+            stroke: var(--leakage-color);
+            stroke-dasharray: 6 4;
+            filter: drop-shadow(0 0 4px var(--leakage-glow));
+        }
+
+        /* Flux animation */
+        @keyframes fluxFlowShell {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -80; }
+        }
+
+        @keyframes fluxFlowToroid {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -120; }
+        }
+
+        @keyframes leakPulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        .flux-animated-main {
+            stroke-dasharray: 20 10;
+            animation: fluxFlowShell 1.5s linear infinite;
+        }
+
+        .flux-animated-toroid {
+            stroke-dasharray: 25 12;
+            animation: fluxFlowToroid 2s linear infinite;
+        }
+
+        .flux-leak-animated {
+            animation: leakPulse 0.8s ease-in-out infinite;
+        }
+
+        /* Efficiency meter */
+        .efficiency-meter {
+            position: relative;
+            height: 24px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .efficiency-fill {
+            height: 100%;
+            border-radius: 11px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .efficiency-fill::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+            animation: shimmer 2s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+        }
+
+        .fill-shell {
+            background: linear-gradient(90deg, #f97316 0%, #fb923c 100%);
+            width: 72%;
+        }
+
+        .fill-toroid {
+            background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+            width: 98%;
+        }
+
+        /* Comparison table styles */
+        .comparison-row {
+            display: grid;
+            grid-template-columns: 140px 1fr 1fr;
+            gap: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+            transition: background 0.2s ease;
+        }
+
+        .comparison-row:hover {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .comparison-row:last-child {
+            border-bottom: none;
+        }
+
+        .param-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .param-value {
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .value-good {
+            color: #86efac;
+        }
+
+        .value-medium {
+            color: #fcd34d;
+        }
+
+        .value-poor {
+            color: #fca5a5;
+        }
+
+        /* Tab buttons */
+        .tab-btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            background: rgba(0,0,0,0.3);
+        }
+
+        .tab-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .tab-btn.shell {
+            color: #93c5fd;
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .tab-btn.shell.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--accent-shell);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
+        }
+
+        .tab-btn.toroid {
+            color: #6ee7b7;
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .tab-btn.toroid.active {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--accent-toroid);
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2);
+        }
+
+        /* Info cards */
+        .info-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
+        }
+
+        .info-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+
+        /* Legend items */
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.25);
+        }
+
+        .legend-line {
+            width: 28px;
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        /* Control panel */
+        .control-panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Toggle switch */
+        .view-toggle {
+            position: relative;
+            width: 160px;
+            height: 48px;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border-radius: 24px;
+            border: 2px solid #334155;
+            cursor: pointer;
+            transition: all 0.4s ease;
+        }
+
+        .view-toggle.active {
+            border-color: var(--accent-toroid);
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.2);
+        }
+
+        .toggle-knob {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(145deg, #64748b 0%, #475569 100%);
+            border-radius: 50%;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .view-toggle.active .toggle-knob {
+            transform: translateX(112px);
+            background: linear-gradient(145deg, #34d399 0%, #10b981 100%);
+            box-shadow: 0 3px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .toggle-label {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            transition: opacity 0.3s ease;
+        }
+
+        .label-left { left: 52px; color: #93c5fd; }
+        .label-right { right: 48px; color: #6ee7b7; opacity: 0; }
+
+        .view-toggle.active .label-left { opacity: 0; }
+        .view-toggle.active .label-right { opacity: 1; }
+
+        /* Entrance animations */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(25px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in {
+            animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            opacity: 0;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+        .delay-5 { animation-delay: 0.5s; }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .core-display {
+                height: 320px;
+            }
+            
+            .e-core, .torus-shape {
+                transform: scale(0.85);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .comparison-row {
+                grid-template-columns: 1fr;
+                gap: 4px;
+            }
+            
+            .param-name {
+                font-weight: 700;
+                color: var(--fg);
+            }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="bg-pattern"></div>
+    <div class="bg-glow"></div>
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-8 animate-in">
+            <h1 class="text-2xl md:text-4xl lg:text-5xl font-bold mb-3 tracking-tight">
+                Anatomia del Nucleo del Transformador
+            </h1>
+            <p class="text-base md:text-lg max-w-3xl mx-auto" style="color: var(--muted);">
+                Comparativa visual: Nucleo Acorazado (E-I) vs Nucleo Toroidal y su eficiencia en el confinamiento del flujo magnetico
+            </p>
+        </header>
+
+        <!-- Main comparison area -->
+        <div class="grid lg:grid-cols-2 gap-6 mb-8">
+            
+            <!-- Shell Type Core -->
+            <div class="animate-in delay-1">
+                <div class="control-panel p-5 mb-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-bold flex items-center gap-3" style="color: var(--accent-shell);">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <path d="M3 9h18M3 15h18M9 3v18"/>
+                            </svg>
+                            Nucleo Acorazado (E-I)
+                        </h2>
+                        <span class="mono text-sm px-3 py-1 rounded-full" style="background: rgba(59, 130, 246, 0.15); color: #93c5fd;">
+                            Tipo Shell
+                        </span>
+                    </div>
+                </div>
+
+                <div class="core-display control-panel" id="shellDisplay">
+                    <div class="shell-core-container">
+                        <div class="shell-core-3d">
+                            <div class="e-core">
+                                <div class="e-core-part e-core-backbone"></div>
+                                <div class="e-core-part e-core-top-arm"></div>
+                                <div class="e-core-part e-core-bottom-arm"></div>
+                                <div class="e-core-part e-core-middle-arm"></div>
+                                <div class="shell-winding" id="shellWinding">
+                                    <div class="winding-turn"></div>
+                                    <div class="winding-turn"></div>
+                                    <div class="winding-turn"></div>
+                                    <div class="winding-turn"></div>
+                                    <div class="winding-turn"></div>
+                                    <div class="winding-turn"></div>
+                                    <div class="winding-turn"></div>
+                                    <div class="winding-turn"></div>
+                                    <div class="winding-turn"></div>
+                                    <div class="winding-turn"></div>
+                                    <div class="winding-turn"></div>
+                                    <div class="winding-turn"></div>
+                                    <div class="winding-turn"></div>
+                                    <div class="winding-turn"></div>
+                                    <div class="winding-turn"></div>
+                                </div>
+                                <div class="i-core"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Flux lines SVG for shell -->
+                    <svg class="flux-overlay" viewBox="0 0 400 380" preserveAspectRatio="xMidYMid meet">
+                        <!-- Main flux path (inside core) -->
+                        <path id="shellFluxMain" class="flux-line flux-main flux-animated-main" 
+                              d="M 85 60 L 320 60 L 320 110 L 175 110 L 175 190 L 115 190 L 115 270 L 320 270 L 320 320 L 85 320 L 85 270 L 145 270 L 145 190 L 205 190 L 205 110 L 85 110 Z"/>
+                        
+                        <!-- Leakage flux paths (at gaps and edges) -->
+                        <path id="shellLeak1" class="flux-line flux-leak flux-leak-animated"
+                              d="M 320 65 Q 360 80 355 130 Q 350 170 340 200"/>
+                        <path id="shellLeak2" class="flux-line flux-leak flux-leak-animated" style="animation-delay: 0.3s;"
+                              d="M 320 265 Q 365 280 358 330"/>
+                        <path id="shellLeak3" class="flux-line flux-leak flux-leak-animated" style="animation-delay: 0.5s;"
+                              d="M 82 150 Q 40 160 42 200 Q 44 240 82 250"/>
+                        <path id="shellLeak4" class="flux-line flux-leak flux-leak-animated" style="animation-delay: 0.7s;"
+                              d="M 175 108 Q 175 60 220 45 Q 260 35 300 48"/>
+                        
+                        <!-- Labels for leakage -->
+                        <text x="355" y="165" fill="#ef4444" font-size="10" font-weight="600">Fuga</text>
+                        <text x="35" y="205" fill="#ef4444" font-size="10" font-weight="600">Fuga</text>
+                        <text x="225" y="38" fill="#ef4444" font-size="10" font-weight="600">Dispersion</text>
+                    </svg>
+                </div>
+
+                <!-- Efficiency indicator -->
+                <div class="mt-4 p-4 info-card">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-semibold text-sm">Confinamiento de Flujo</span>
+                        <span class="mono text-sm font-bold" style="color: #fb923c;">72%</span>
+                    </div>
+                    <div class="efficiency-meter">
+                        <div class="efficiency-fill fill-shell" id="shellEfficiencyFill"></div>
+                    </div>
+                    <p class="text-xs mt-2" style="color: var(--muted);">
+                        ~28% del flujo se pierde por entrehierros y dispersion en los extremos
+                    </p>
+                </div>
+            </div>
+
+            <!-- Toroidal Core -->
+            <div class="animate-in delay-2">
+                <div class="control-panel p-5 mb-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-bold flex items-center gap-3" style="color: var(--accent-toroid);">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="9"/>
+                                <circle cx="12" cy="12" r="4"/>
+                            </svg>
+                            Nucleo Toroidal
+                        </h2>
+                        <span class="mono text-sm px-3 py-1 rounded-full" style="background: rgba(16, 185, 129, 0.15); color: #6ee7b7;">
+                            Tipo Anillo
+                        </span>
+                    </div>
+                </div>
+
+                <div class="core-display control-panel" style="background: linear-gradient(135deg, rgba(15, 21, 32, 0.95) 0%, rgba(8, 12, 18, 0.98) 100%);" id="toroidDisplay">
+                    <div class="toroid-core-container">
+                        <div class="toroid-core-3d">
+                            <div class="torus-shape">
+                                <div class="torus-outer"></div>
+                                <div class="torus-inner"></div>
+                                <div class="toroid-winding"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Flux lines SVG for toroid -->
+                    <svg class="flux-overlay" viewBox="0 0 400 380" preserveAspectRatio="xMidYMid meet">
+                        <!-- Main confined flux path (perfect circle inside toroid) -->
+                        <ellipse id="toroidFluxMain" class="flux-line flux-main flux-animated-toroid"
+                                 cx="200" cy="190" rx="75" ry="68"/>
+                        
+                        <!-- Inner flux path -->
+                        <ellipse class="flux-line flux-main flux-animated-toroid" style="animation-delay: 0.2s; opacity: 0.6;"
+                                 cx="200" cy="190" rx="58" ry="52"/>
+                        
+                        <!-- Minimal leakage (almost none) -->
+                        <ellipse id="toroidLeakMin" class="flux-line flux-leak" style="opacity: 0.15;"
+                                 cx="200" cy="190" rx="95" ry="85" stroke-dasharray="3 8"/>
+                        
+                        <!-- Label for excellent confinement -->
+                        <text x="290" y="195" fill="#10b981" font-size="11" font-weight="600">Confinado</text>
+                        <text x="280" y="210" fill="#10b981" font-size="9">~98%</text>
+                    </svg>
+                </div>
+
+                <!-- Efficiency indicator -->
+                <div class="mt-4 p-4 info-card">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-semibold text-sm">Confinamiento de Flujo</span>
+                        <span class="mono text-sm font-bold" style="color: #34d399;">98%</span>
+                    </div>
+                    <div class="efficiency-meter">
+                        <div class="efficiency-fill fill-toroid" id="toroidEfficiencyFill"></div>
+                    </div>
+                    <p class="text-xs mt-2" style="color: var(--muted);">
+                        El camino cerrado continuo minimiza las fugas a menos del 2%
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="control-panel p-6 mb-8 animate-in delay-3">
+            <div class="flex flex-col md:flex-row items-center justify-center gap-8">
+                
+                <!-- View mode toggle -->
+                <div class="flex flex-col items-center gap-3">
+                    <span class="text-sm font-semibold" style="color: var(--muted);">Mostrar Lineas de Flujo</span>
+                    <button class="view-toggle active" id="fluxToggle" role="switch" aria-checked="true" aria-label="Mostrar u ocultar lineas de flujo">
+                        <div class="toggle-knob">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                                <circle cx="12" cy="12" r="5"/>
+                                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                            </svg>
+                        </div>
+                        <span class="toggle-label label-left">ON</span>
+                        <span class="toggle-label label-right">OFF</span>
+                    </button>
+                </div>
+
+                <!-- Legend -->
+                <div class="flex flex-wrap justify-center gap-4">
+                    <div class="legend-item">
+                        <div class="legend-line" style="background: var(--flux-color); box-shadow: 0 0 8px var(--flux-glow);"></div>
+                        <span class="text-xs font-medium">Flujo principal</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-line" style="background: var(--leakage-color); border-style: dashed;"></div>
+                        <span class="text-xs font-medium">Fuga / Dispersion</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparison Table -->
+        <div class="control-panel p-6 mb-8 animate-in delay-4">
+            <h3 class="text-xl font-bold mb-5 flex items-center gap-3">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M3 9h18M9 21V9"/>
+                </svg>
+                Tabla Comparativa de Caracteristicas
+            </h3>
+
+            <div class="rounded-xl overflow-hidden" style="background: rgba(0,0,0,0.2);">
+                <!-- Header row -->
+                <div class="comparison-row" style="background: rgba(59, 130, 246, 0.08); font-weight: 700;">
+                    <span class="param-name" style="color: var(--fg);">Parametro</span>
+                    <span class="param-value" style="color: var(--accent-shell);">Acorazado (E-I)</span>
+                    <span class="param-value" style="color: var(--accent-toroid);">Toroidal</span>
+                </div>
+
+                <!-- Data rows -->
+                <div class="comparison-row">
+                    <span class="param-name">Confinamiento flujo</span>
+                    <span class="param-value value-medium">72-85%</span>
+                    <span class="param-value value-good">95-99%</span>
+                </div>
+
+                <div class="comparison-row">
+                    <span class="param-name">Perdidas por fuga</span>
+                    <span class="param-value value-poor">Significativas</span>
+                    <span class="param-value value-good">Minimas (&lt;2%)</span>
+                </div>
+
+                <div class="comparison-row">
+                    <span class="param-name">Ruido magnetico</span>
+                    <span class="param-value value-medium">Moderado</span>
+                    <span class="param-value value-good">Muy bajo</span>
+                </div>
+
+                <div class="comparison-row">
+                    <span class="param-name">Entrehierros (gaps)</span>
+                    <span class="param-value value-poor">2 uniones E-I</span>
+                    <span class="param-value value-good">Ninguno (continuo)</span>
+                </div>
+
+                <div class="comparison-row">
+                    <span class="param-name">Eficiencia tipica</span>
+                    <span class="param-value value-medium">90-94%</span>
+                    <span class="param-value value-good">96-99%</span>
+                </div>
+
+                <div class="comparison-row">
+                    <span class="param-name">EMI emitida</span>
+                    <span class="param-value value-medium">Alta</span>
+                    <span class="param-value value-good">Baja</span>
+                </div>
+
+                <div class="comparison-row">
+                    <span class="param-name">Peso/volumen</span>
+                    <span class="param-value value-good">Menor</span>
+                    <span class="param-value value-medium">Mayor</span>
+                </div>
+
+                <div class="comparison-row">
+                    <span class="param-name">Coste fabricacion</span>
+                    <span class="param-value value-good">Bajo</span>
+                    <span class="param-value value-medium">Alto</span>
+                </div>
+
+                <div class="comparison-row">
+                    <span class="param-name">Aplicacion ideal</span>
+                    <span class="param-value" style="color: var(--muted);">General, economica</span>
+                    <span class="param-value" style="color: var(--muted);">Audio, precision, HF</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Explanation cards -->
+        <div class="grid md:grid-cols-2 gap-6 mb-8 animate-in delay-5">
+            <div class="info-card">
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style="background: rgba(239, 68, 68, 0.15);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+                            <path d="M10 3H6a2 2 0 00-2 2v14a2 2 0 002 2h4"/>
+                            <path d="M14 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/>
+                            <path d="M12 8v8"/>
+                            <path d="M8 12h8"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-2" style="color: #fca5a5;">Por que el nucleo E-I tiene fugas</h4>
+                        <p class="text-sm" style="color: var(--muted);">
+                            La construccion en piezas separadas (E + I) crea <strong style="color: var(--fg);">entrehierros</strong> en las uniones donde el flujo debe saltar de una pieza a otra. Ademas, los extremos abiertos permiten que parte del campo magnetico escape al aire exterior, creando perdidas y interferencias electromagneticas.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style="background: rgba(16, 185, 129, 0.15);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-2" style="color: #86efac;">Por que el toroidal es mas eficiente</h4>
+                        <p class="text-sm" style="color: var(--muted);">
+                            El nucleo toroidal es una <strong style="color: var(--fg);">pieza continua sin interrupciones</strong>. El camino magnetico forma un bucle cerrado perfecto que guia todo el flujo a traves del material ferromagnetico. No hay entrehierros ni bordes abiertos, por lo que el confinamiento es practicamente total.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical detail section -->
+        <div class="info-card p-6 animate-in delay-5">
+            <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                </svg>
+                Principio Fisico: Ley de Ampere y Camino Magnetico
+            </h3>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="p-4 rounded-lg" style="background: rgba(0,0,0,0.3);">
+                    <div class="mono text-lg mb-3" style="color: var(--accent-shell);">
+                        R = l / (mu * A)
+                    </div>
+                    <p class="text-sm mb-3" style="color: var(--muted);">
+                        <strong>R</strong> = Reluctancia del circuito magnetico<br>
+                        <strong>l</strong> = Longitud del camino<br>
+                        <strong>mu</strong> Permeabilidad del material<br>
+                        <strong>A</strong> Seccion transversal
+                    </p>
+                    <p class="text-xs" style="color: var(--muted);">
+                        En el nucleo E-I, los entrehierros anaden reluctancia de aire (mu muy baja), aumentando R total y forzando fugas.
+                    </p>
+                </div>
+                
+                <div class="p-4 rounded-lg" style="background: rgba(0,0,0,0.3);">
+                    <div class="mono text-lg mb-3" style="color: var(--accent-toroid);">
+                        Phi = N*I / R_total
+                    </div>
+                    <p class="text-sm mb-3" style="color: var(--muted);">
+                        <strong>Phi</strong> = Flujo magnetico total<br>
+                        <strong>N*I</strong> Fuerza magnetomotriz<br>
+                        <strong>R_total</strong> Reluctancia acumulada
+                    </p>
+                    <p class="text-xs" style="color: var(--muted);">
+                        Menor R_total en el toroidal significa mayor Phi confinado para la misma corriente, maximizando la transferencia de energia.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <footer class="text-center mt-10 pb-6" style="color: var(--muted);">
+            <p class="text-sm">Diagrama educativo - Anatomia comparativa de nucleos de transformador</p>
+        </footer>
+    </div>
+
+    <script>
+        // ============================================
+        // STATE INITIALIZATION
+        // ============================================
+        
+        const appState = {
+            showFlux: true
+        };
+
+        // ============================================
+        // DOM ELEMENTS
+        // ============================================
+        
+        const dom = {
+            fluxToggle: document.getElementById('fluxToggle'),
+            // Shell core flux elements
+            shellFluxMain: document.getElementById('shellFluxMain'),
+            shellLeak1: document.getElementById('shellLeak1'),
+            shellLeak2: document.getElementById('shellLeak2'),
+            shellLeak3: document.getElementById('shellLeak3'),
+            shellLeak4: document.getElementById('shellLeak4'),
+            // Toroid flux elements
+            toroidFluxMain: document.getElementById('toroidFluxMain'),
+            toroidLeakMin: document.getElementById('toroidLeakMin')
+        };
+
+        const allFluxElements = [
+            dom.shellFluxMain,
+            dom.shellLeak1,
+            dom.shellLeak2,
+            dom.shellLeak3,
+            dom.shellLeak4,
+            dom.toroidFluxMain,
+            dom.toroidLeakMin
+        ];
+
+        // ============================================
+        // FLUX TOGGLE FUNCTION
+        // ============================================
+        
+        function toggleFluxVisibility() {
+            appState.showFlux = !appState.showFlux;
+            updateFluxVisibility();
+        }
+
+        function updateFluxVisibility() {
+            const visible = appState.showFlux;
+            
+            // Update toggle UI
+            dom.fluxToggle.classList.toggle('active', visible);
+            dom.fluxToggle.setAttribute('aria-checked', visible.toString());
+            
+            // Show/hide all flux lines
+            allFluxElements.forEach(el => {
+                if (el) {
+                    el.classList.toggle('visible', visible);
+                }
+            });
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+        
+        function initEventListeners() {
+            // Flux toggle
+            dom.fluxToggle.addEventListener('click', toggleFluxVisibility);
+            dom.fluxToggle.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleFluxVisibility();
+                }
+            });
+
+            // Add hover effects to core displays
+            const shellDisplay = document.getElementById('shellDisplay');
+            const toroidDisplay = document.getElementById('toroidDisplay');
+
+            if (shellDisplay) {
+                shellDisplay.addEventListener('mouseenter', () => {
+                    if (!appState.showFlux) {
+                        allFluxElements.slice(0, 5).forEach(el => {
+                            if (el) el.style.opacity = '0.5';
+                        });
+                    }
+                });
+                shellDisplay.addEventListener('mouseleave', () => {
+                    if (!appState.showFlux) {
+                        allFluxElements.slice(0, 5).forEach(el => {
+                            if (el) el.style.opacity = '';
+                        });
+                    }
+                });
+            }
+
+            if (toroidDisplay) {
+                toroidDisplay.addEventListener('mouseenter', () => {
+                    if (!appState.showFlux) {
+                        allFluxElements.slice(5).forEach(el => {
+                            if (el) el.style.opacity = '0.5';
+                        });
+                    }
+                });
+                toroidDisplay.addEventListener('mouseleave', () => {
+                    if (!appState.showFlux) {
+                        allFluxElements.slice(5).forEach(el => {
+                            if (el) el.style.opacity = '';
+                        });
+                    }
+                });
+            }
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        
+        function init() {
+            // Set initial state
+            updateFluxVisibility();
+            
+            // Setup events
+            initEventListeners();
+
+            console.log('Comparativa de núcleos de transformador inicializada.');
+        }
+
+        // Start when ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>
